@@ -10,6 +10,8 @@ beam_electrons = 1
 k = 8.988 * 10**9
 pp_electron_velocity = 18.7e6
 m_e = 9.1093837e-31
+
+#ANTON FIXA DEHÄR
 class Electron:
     def __init__(self, charge=None, position=None, velocity=pp_electron_velocity, acceleration=None, mass=m_e):
         self.charge = charge
