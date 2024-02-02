@@ -11,6 +11,9 @@ k = 8.988 * 10**9
 pp_electron_velocity = 18.7e6
 m_e = 9.1093837e-31
 
+my0=1.2566370614*10**-6
+pi=3.14
+
 #ANTON FIXA DEHÄR
 class Electron:
     def __init__(self, charge=None, position=None, velocity=pp_electron_velocity, acceleration=None, mass=m_e):
