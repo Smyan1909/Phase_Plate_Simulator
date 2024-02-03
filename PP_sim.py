@@ -16,13 +16,15 @@ pi=3.14
 
 #ANTON FIXA DEHÄR
 class Electron:
-    def __init__(self, charge=None, position=None, velocity=pp_electron_velocity, acceleration=None, mass=m_e):
-        self.charge = charge
+    def __init__(self, charge=None, position=None, velocity=None, acceleration=None, mass=m_e):
+        self.charge = charge  # keV
         self.position = position
         self.velocity = velocity
         self.acceleration = acceleration
         self.distance_matrix = None
         self.colomb_force_matrix = None
+        self.magnetic_force_matrix = None
+        self.lorentz_force_matrix = None
         self.net_force = None  # Added attribute for net force
         self.mass = mass
 
@@ -84,6 +86,39 @@ class Electron:
         #self.net_force = np.sum(self.colomb_force_matrix, axis=0)
         return np.sum(self.colomb_force_matrix, axis=0)
 
+    def magnetic_force(self, all_electrons, x):  # Biot–Savart law
+        magnetic_forces = np.zeros((len(all_electrons), 3))
+        for i, other in enumerate(all_electrons):
+            if other != self:
+                rx = x[0] - other.position[0]
+                ry = x[1] - other.position[1]
+                rz = x[2] - other.position[2]
+
+                distance = math.sqrt(rx ** 2 + ry ** 2 + rz ** 2)
+
+                unit_vector = np.array([rx, ry, rz]) / distance
+
+                cross_product = np.cross(self.velocity, unit_vector)
+                b_factor = my0 / (4 * pi * distance ** 2)
+                F_b = b_factor * cross_product
+                magnetic_forces[i] = F_b
+
+        self.magnetic_force_matrix = magnetic_forces
+
+    def lorentz_force(self, all_electrons):
+        lorentz_forces = np.zeros((len(all_electrons), 3))
+        for i, other in enumerate(all_electrons):
+            if other != self:
+                F_l = other.charge * (
+                            self.colomb_force_matrix[i] + np.cross(other.velocity, self.magnetic_force_matrix[i]))
+
+                lorentz_forces[i] = F_l
+        self.lorentz_force_matrix = lorentz_forces
+
+        print(f"Lorentz Forces for Electron {id(self)}:")
+        for force in lorentz_forces:
+            print(force)
+
 
 
 # Create an array of Electron objects with random initial positions
@@ -96,8 +131,14 @@ for electron in all_electrons:
     electron.calculate_distances(all_electrons)
 
 # Calculate Coulomb forces and unit vectors for each electron
+#for electron in all_electrons:
+ #   electron.colomb_force(all_electrons, electron.position)
+
+# Calculate forces and unit vectors for each electron
 for electron in all_electrons:
     electron.colomb_force(all_electrons, electron.position)
+   # electron.magnetic_force(all_electrons, electron.position)
+    #electron.lorentz_force(all_electrons, electron.position)
 
 # Print the net force vectors for each electron
 for i, electron in enumerate(all_electrons):
