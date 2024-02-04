@@ -168,7 +168,7 @@ def calculate_potential():
     for M in range(len(x_)):
         for N in range(len(y_)):
             for P in range(len(z_)):
-                for electron in all_electrons:
+                for electron in electron_array_pp:
                     Vp[M][N][P] = k * (electron.charge / np.linalg.norm(np.array(electron.position)
                                     - (x[M, N, P],y[M, N, P],z[M, N, P])))
     print(Vp)
