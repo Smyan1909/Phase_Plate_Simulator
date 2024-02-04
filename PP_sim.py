@@ -10,6 +10,10 @@ beam_electrons = 1
 k = 8.988 * 10**9
 pp_electron_velocity = 18.7e6
 m_e = 9.1093837e-31
+e = 1.602 * 10 ** -19
+x_range = 0.5
+y_range = 0.5
+z_range = 0.5
 
 my0=1.2566370614*10**-6
 pi=3.14
@@ -121,9 +125,10 @@ class Electron:
 
 
 
+
 # Create an array of Electron objects with random initial positions
-electron_array_pp = [Electron(charge=20, position=[random.uniform(-0.5, 0.5), 0, 0]) for _ in range(pp_electrons)]
-electron_array_beam = [Electron(charge=200, position=[random.uniform(-0.2, 0.2), 0, 0.2]) for _ in range(beam_electrons)]
+electron_array_pp = [Electron(charge=e, position=[random.uniform(-x_range, x_range), 0, 0]) for _ in range(pp_electrons)]
+electron_array_beam = [Electron(charge=e, position=[random.uniform(-x_range, x_range), 0, z_range]) for _ in range(beam_electrons)]
 
 # Calculate distances for each electron
 all_electrons = electron_array_pp + electron_array_beam
@@ -144,9 +149,23 @@ for electron in all_electrons:
 for i, electron in enumerate(all_electrons):
     print(f"Net Force Vector for Electron {i + 1}:\n{electron.net_force}\n")
 
+'''
+#Calculate potential
+x_ = np.linspace(-x_range, x_range, 15)
+y_ = np.linspace(-y_range, y_range, 15)
+z_ = np.linspace(0, z_range, 15)
 
+x, y, z = np.meshgrid(x_, y_, z_, indexing='ij')
+Vp = np.zeros((len(x),len(y),len(z)))
 
-
+for M in range(len(x_)):
+    for N in range(len(y_)):
+        for P in range(len(z_)):
+            for i in range(len(all_electrons)):
+                Vp[M][N][P] = k * (all_electrons[i].charge / np.linalg.norm(np.array(all_electrons[i].position)
+                - (x[M,N,P],y[M,N,P],z[M,N,P])))
+print(Vp)
+'''
 
 # 3D plot of electron positions
 fig = plt.figure()
