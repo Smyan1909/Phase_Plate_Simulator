@@ -15,8 +15,8 @@ x_range = 0.5
 y_range = 0.5
 z_range = 0.5
 
-my0=1.2566370614*10**-6
-pi=3.14
+my0 = 1.2566370614*10**-6
+pi = 3.14
 
 #ANTON FIXA DEHÄR
 class Electron:
@@ -39,21 +39,21 @@ class Electron:
     def rk4_integrator(self, time_step, all_electrons):
         dt = time_step
 
-        k1_v = dt*self.colomb_force(all_electrons, self.position)
+        k1_v = dt*self.total_force(all_electrons, self.position, self.velocity)
         k1_x = dt*self.velocity
 
-        k2_v = dt*self.colomb_force(all_electrons, self.position + (k1_x/2))
+        k2_v = dt*self.total_force(all_electrons, self.position + (k1_x/2), self.velocity + (k1_v/2))
         k2_x = dt*(self.velocity + (k1_v/2))
 
-        k3_v = dt*self.colomb_force(all_electrons, self.position + (k2_x/2))
+        k3_v = dt*self.total_force(all_electrons, self.position + (k2_x/2), self.velocity + (k2_v/2))
         k3_x = dt*(self.velocity + (k2_v/2))
 
-        k4_v = dt*self.colomb_force(all_electrons, self.position + k3_x)
+        k4_v = dt*self.total_force(all_electrons, self.position + k3_x, self.velocity + k3_v)
         k4_x = dt*(self.velocity + k3_v)
 
         self.velocity += (1/6)*(k1_v + 2*k2_v + 2*k3_v + k4_v)
         self.position += (1/6)*(k1_x + 2*k2_x + 2*k3_x + k4_x)
-        pass
+
 
     def distance(self, other):
         # Calculate the Euclidean distance between self and other electrons
@@ -90,7 +90,7 @@ class Electron:
         #self.net_force = np.sum(self.colomb_force_matrix, axis=0)
         return np.sum(self.colomb_force_matrix, axis=0)
 
-    def magnetic_force(self, all_electrons, x):  # Biot–Savart law
+    def magnetic_force(self, all_electrons, x, v):  # Biot–Savart law
         magnetic_forces = np.zeros((len(all_electrons), 3))
         for i, other in enumerate(all_electrons):
             if other != self:
@@ -102,13 +102,17 @@ class Electron:
 
                 unit_vector = np.array([rx, ry, rz]) / distance
 
-                cross_product = np.cross(self.velocity, unit_vector)
+                cross_product = np.cross(v, unit_vector)
                 b_factor = my0 / (4 * pi * distance ** 2)
                 F_b = b_factor * cross_product
                 magnetic_forces[i] = F_b
 
         self.magnetic_force_matrix = magnetic_forces
 
+        return np.sum(self.magnetic_force_matrix, axis=0)
+
+    # Jag tror inte detta är korrekt, lorentz kraften är bara Colomb kraften + Magnet kraften
+    """
     def lorentz_force(self, all_electrons):
         lorentz_forces = np.zeros((len(all_electrons), 3))
         for i, other in enumerate(all_electrons):
@@ -122,8 +126,10 @@ class Electron:
         print(f"Lorentz Forces for Electron {id(self)}:")
         for force in lorentz_forces:
             print(force)
+    """
 
-
+    def total_force(self, all_electrons, x, v):
+        return self.colomb_force(all_electrons=all_electrons, x=x) + self.magnetic_force(all_electrons=all_electrons, x=x, v=v)
 
 
 # Create an array of Electron objects with random initial positions
@@ -149,23 +155,25 @@ for electron in all_electrons:
 for i, electron in enumerate(all_electrons):
     print(f"Net Force Vector for Electron {i + 1}:\n{electron.net_force}\n")
 
-'''
+
 #Calculate potential
-x_ = np.linspace(-x_range, x_range, 15)
-y_ = np.linspace(-y_range, y_range, 15)
-z_ = np.linspace(0, z_range, 15)
+def calculate_potential():
+    x_ = np.linspace(-x_range, x_range, 15)
+    y_ = np.linspace(-y_range, y_range, 15)
+    z_ = np.linspace(0, z_range, 15)
 
-x, y, z = np.meshgrid(x_, y_, z_, indexing='ij')
-Vp = np.zeros((len(x),len(y),len(z)))
+    x, y, z = np.meshgrid(x_, y_, z_, indexing='ij')
+    Vp = np.zeros((len(x), len(y), len(z)))
 
-for M in range(len(x_)):
-    for N in range(len(y_)):
-        for P in range(len(z_)):
-            for i in range(len(all_electrons)):
-                Vp[M][N][P] = k * (all_electrons[i].charge / np.linalg.norm(np.array(all_electrons[i].position)
-                - (x[M,N,P],y[M,N,P],z[M,N,P])))
-print(Vp)
-'''
+    for M in range(len(x_)):
+        for N in range(len(y_)):
+            for P in range(len(z_)):
+                for electron in all_electrons:
+                    Vp[M][N][P] = k * (electron.charge / np.linalg.norm(np.array(electron.position)
+                                    - (x[M, N, P],y[M, N, P],z[M, N, P])))
+    print(Vp)
+    return Vp
+
 
 # 3D plot of electron positions
 fig = plt.figure()
