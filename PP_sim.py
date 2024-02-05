@@ -78,7 +78,6 @@ class Electron:
                 rz = x[2] - other.position[2]
 
                 distance = math.sqrt(rx**2 + ry**2 + rz**2)
-
                 unit_vector = np.array([rx, ry, rz]) / distance
 
                 # Calculate Coulomb force vector
