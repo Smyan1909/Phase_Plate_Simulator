@@ -19,6 +19,10 @@ z_range = 0.5
 
 my0 = 1.2566370614*10**-6
 
+angstrom = 1e-10
+voxelsize = 0.5  # Ångström
+grid_size = 600  # 600x600 pixel grid for image
+
 
 
 class Electron:
@@ -95,7 +99,7 @@ class Electron:
     def keV_to_ms (self):
         return math.sqrt(2 * self.charge / m_e)
 
-    def magnetic_force(self, all_electrons, x):  # Biot–Savart law
+    def magnetic_force(self, all_electrons, x, v):  # Biot–Savart law
         magnetic_forces = np.zeros((len(all_electrons), 3))
         for i, other in enumerate(all_electrons):
             if other != self:
@@ -108,7 +112,7 @@ class Electron:
                 unit_vector = np.array([rx, ry, rz]) / distance
 
                 if( first_run==0):
-                    cross_product = np.cross(self.velocity, unit_vector)
+                    cross_product = np.cross(v, unit_vector)
 
                 if (first_run == 1):
                     cross_product = np.cross((0,electron.keV_to_ms(),0), unit_vector) #initial value
@@ -133,13 +137,13 @@ class Electron:
 #Calculate Potential
 def calculate_potential(elec_array):
 
-    x_ = np.linspace(0, x_range, 15)
-    y_ = np.linspace(-y_range, y_range, 15)
-    z_ = np.linspace(0, z_range, 15)
+    x_ = np.linspace(-grid_size//4, grid_size//4, num=60)*angstrom
+    y_ = np.linspace(-grid_size//4, grid_size//4, num=60)*angstrom
+    z_ = np.linspace(-20e-6, 20e-6, num=60)
     x, y, z = np.meshgrid(x_, y_, z_, indexing='ij')
 
     Vp = np.zeros((len(x), len(y), len(z)))
-
+    dz = z_[1]-z_[0]
 
     for electron in elec_array:
 
@@ -147,14 +151,17 @@ def calculate_potential(elec_array):
 
         dist = np.sqrt((x - elec_pos[0]) ** 2 + (y - elec_pos[1]) ** 2 + (z - elec_pos[2]) ** 2)
 
+        #dist = np.linalg.norm(np.array([x - elec_pos[0], y - elec_pos[1], z - elec_pos[2]]), axis=0)
+
         Vp += k * (electron.charge / dist)
 
-    return Vp
+    return Vp, dz
 
 
 
 #Write code to run here for encapsulation (SMYAN)
 if __name__ == "__main__":
+
     # Create an array of Electron objects with random initial positions
     electron_array_pp = [Electron(charge=e, position=[np.random.normal(i * 0.5e-6 + 0.25e-6, 0.25e-6),
                                                       1e-6 * np.random.normal(0.0, 0.5),
@@ -165,20 +172,20 @@ if __name__ == "__main__":
     # Calculate distances for each electron
     all_electrons = electron_array_pp + electron_array_beam
 
-    first_run=1
-
+    first_run = 1
+    """
     for electron in all_electrons:
         if(first_run==1):
             print(f'First run')
             electron.colomb_force(all_electrons, electron.position)
-            electron.magnetic_force(all_electrons, electron.position)
+            electron.magnetic_force(all_electrons, electron.position, electron.velocity)
 
         if (first_run == 0):
             print(f'NOT first run')
             electron.rk4_integrator(time_step, all_electrons)
             electron.colomb_force(all_electrons, electron.position)
-            electron.magnetic_force(all_electrons, electron.position)
-
+            electron.magnetic_force(all_electrons, electron.position, electron.velocity)
+    """
 
 
 
@@ -202,7 +209,11 @@ if __name__ == "__main__":
     # Plotting electrons from beam_electrons
     ax.scatter(x_coords_beam, y_coords_beam, z_coords_beam, c='r', marker='s', label='beam_electrons')
 
-    V = calculate_potential(electron_array_pp)
+    V, dz = calculate_potential(electron_array_pp)
+
+    fig2 = plt.figure()
+    ax2 = fig2.add_subplot(111)
+    ax2.imshow(np.sum(V, axis=2)*dz, extent=(-grid_size//4*angstrom, grid_size//4*angstrom, -grid_size//4*angstrom, grid_size//4*angstrom), aspect="auto")
 
     # Set axis labels
     ax.set_xlabel('X')
