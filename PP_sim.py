@@ -137,10 +137,10 @@ class Electron:
 #Calculate Potential
 def calculate_potential(elec_array):
 
-    x_ = np.linspace(-grid_size//4, grid_size//4, num=60)*angstrom
-    y_ = np.linspace(-grid_size//4, grid_size//4, num=60)*angstrom
-    z_ = np.linspace(-20e-6, 20e-6, num=60)
-    x, y, z = np.meshgrid(x_, y_, z_, indexing='ij')
+    x_ = np.linspace(0, 0.0005, num=100)
+    y_ = np.linspace(-20e-6, 20e-6, num=100)
+    z_ = np.linspace(-20e-6, 20e-6, num=100)
+    x, y, z = np.meshgrid(x_, y_, z_)
 
     Vp = np.zeros((len(x), len(y), len(z)))
     dz = z_[1]-z_[0]
@@ -150,8 +150,6 @@ def calculate_potential(elec_array):
         elec_pos = np.array(electron.position)
 
         dist = np.sqrt((x - elec_pos[0]) ** 2 + (y - elec_pos[1]) ** 2 + (z - elec_pos[2]) ** 2)
-
-        #dist = np.linalg.norm(np.array([x - elec_pos[0], y - elec_pos[1], z - elec_pos[2]]), axis=0)
 
         Vp += k * (electron.charge / dist)
 
@@ -164,8 +162,8 @@ if __name__ == "__main__":
 
     # Create an array of Electron objects with random initial positions
     electron_array_pp = [Electron(charge=e, position=[np.random.normal(i * 0.5e-6 + 0.25e-6, 0.25e-6),
-                                                      1e-6 * np.random.normal(0.0, 0.5),
-                                                      1e-6 * np.random.normal(0.0, 0.5)]) for i in range(pp_electrons)]
+                                                      1e-6 * np.random.normal(0, 0.5),
+                                                      1e-6 * np.random.normal(0, 0.5)]) for i in range(pp_electrons)]
     electron_array_beam = [Electron(charge=e, position=[random.uniform(-x_range, x_range), 0, z_range]) for _ in
                            range(beam_electrons)]
 
@@ -213,7 +211,7 @@ if __name__ == "__main__":
 
     fig2 = plt.figure()
     ax2 = fig2.add_subplot(111)
-    ax2.imshow(np.sum(V, axis=2)*dz, extent=(-grid_size//4*angstrom, grid_size//4*angstrom, -grid_size//4*angstrom, grid_size//4*angstrom), aspect="auto")
+    ax2.imshow(np.sum(V, axis=2)*dz)
 
     # Set axis labels
     ax.set_xlabel('X')
