@@ -4,21 +4,21 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 pp_electrons = 3
-beam_electrons = 1
+beam_electrons = 0
 
 # constants
 k = 8.988 * 10**9
 pp_electron_velocity = 18.7e6
 m_e = 9.1093837e-31
 e = 1.602 * 10 ** -19
-x_range = 0.5
-y_range = 0.5
+x_range = 0.15
+y_range = 0.15
 z_range = 0.5
 
 my0 = 1.2566370614*10**-6
-pi = 3.14
 
-#ANTON FIXA DEHÄR
+
+
 class Electron:
     def __init__(self, charge=None, position=None, velocity=None, acceleration=None, mass=m_e):
         self.charge = charge  # keV
@@ -39,16 +39,16 @@ class Electron:
     def rk4_integrator(self, time_step, all_electrons):
         dt = time_step
 
-        k1_v = dt*self.total_force(all_electrons, self.position, self.velocity)
+        k1_v = dt*(self.total_force(all_electrons, self.position, self.velocity)/m_e)
         k1_x = dt*self.velocity
 
-        k2_v = dt*self.total_force(all_electrons, self.position + (k1_x/2), self.velocity + (k1_v/2))
+        k2_v = dt*(self.total_force(all_electrons, self.position + (k1_x/2), self.velocity + (k1_v/2))/m_e)
         k2_x = dt*(self.velocity + (k1_v/2))
 
-        k3_v = dt*self.total_force(all_electrons, self.position + (k2_x/2), self.velocity + (k2_v/2))
+        k3_v = dt*(self.total_force(all_electrons, self.position + (k2_x/2), self.velocity + (k2_v/2))/m_e)
         k3_x = dt*(self.velocity + (k2_v/2))
 
-        k4_v = dt*self.total_force(all_electrons, self.position + k3_x, self.velocity + k3_v)
+        k4_v = dt*(self.total_force(all_electrons, self.position + k3_x, self.velocity + k3_v)/m_e)
         k4_x = dt*(self.velocity + k3_v)
 
         self.velocity += (1/6)*(k1_v + 2*k2_v + 2*k3_v + k4_v)
@@ -103,7 +103,7 @@ class Electron:
                 unit_vector = np.array([rx, ry, rz]) / distance
 
                 cross_product = np.cross(v, unit_vector)
-                b_factor = my0 / (4 * pi * distance ** 2)
+                b_factor = my0 / (4 * np.pi * distance ** 2)
                 F_b = b_factor * cross_product
                 magnetic_forces[i] = F_b
 
@@ -111,7 +111,7 @@ class Electron:
 
         return np.sum(self.magnetic_force_matrix, axis=0)
 
-    # Jag tror inte detta är korrekt, lorentz kraften är bara Colomb kraften + Magnet kraften
+    # Jag tror inte detta är korrekt, lorentz kraften är bara Colomb kraften + Magnet kraften (Smyan)
     """
     def lorentz_force(self, all_electrons):
         lorentz_forces = np.zeros((len(all_electrons), 3))
@@ -132,84 +132,72 @@ class Electron:
         return self.colomb_force(all_electrons=all_electrons, x=x) + self.magnetic_force(all_electrons=all_electrons, x=x, v=v)
 
 
-# Create an array of Electron objects with random initial positions
-electron_array_pp = [Electron(charge=e, position=[random.uniform(-x_range, x_range), 0, 0]) for _ in range(pp_electrons)]
-electron_array_beam = [Electron(charge=e, position=[random.uniform(-x_range, x_range), 0, z_range]) for _ in range(beam_electrons)]
+#Jag har optimerat potential beräkningen så att nu går det bara igenom en loop istället för 3 (Smyan)
+#Den gör samma beräkning men med vectorer och meshgrid istället för index beräkning som använder sig
+#av C bibliotek inuti numpy
+#Calculate Potential
+def calculate_potential(elec_array):
 
-# Calculate distances for each electron
-all_electrons = electron_array_pp + electron_array_beam
-for electron in all_electrons:
-    electron.calculate_distances(all_electrons)
-
-# Calculate Coulomb forces and unit vectors for each electron
-#for electron in all_electrons:
- #   electron.colomb_force(all_electrons, electron.position)
-
-# Calculate forces and unit vectors for each electron
-for electron in all_electrons:
-    electron.colomb_force(all_electrons, electron.position)
-   # electron.magnetic_force(all_electrons, electron.position)
-    #electron.lorentz_force(all_electrons, electron.position)
-
-# Print the net force vectors for each electron
-for i, electron in enumerate(all_electrons):
-    print(f"Net Force Vector for Electron {i + 1}:\n{electron.net_force}\n")
-
-
-#Calculate potential
-def calculate_potential():
     x_ = np.linspace(-x_range, x_range, 15)
     y_ = np.linspace(-y_range, y_range, 15)
     z_ = np.linspace(0, z_range, 15)
-
     x, y, z = np.meshgrid(x_, y_, z_, indexing='ij')
+
     Vp = np.zeros((len(x), len(y), len(z)))
 
-    for M in range(len(x_)):
-        for N in range(len(y_)):
-            for P in range(len(z_)):
-                for electron in electron_array_pp:
-                    Vp[M][N][P] = k * (electron.charge / np.linalg.norm(np.array(electron.position)
-                                    - (x[M, N, P],y[M, N, P],z[M, N, P])))
-    print(Vp)
+
+    for electron in elec_array:
+
+        elec_pos = np.array(electron.position)
+
+        dist = np.sqrt((x - elec_pos[0]) ** 2 + (y - elec_pos[1]) ** 2 + (z - elec_pos[2]) ** 2)
+
+        Vp += k * (electron.charge / dist)
+
     return Vp
 
 
-# 3D plot of electron positions
-fig = plt.figure()
-ax = fig.add_subplot(111, projection='3d')
 
-# Extract x, y, z coordinates from each electron's position for pp_electrons
-x_coords_pp = [electron.position[0] for electron in electron_array_pp]
-y_coords_pp = [electron.position[1] for electron in electron_array_pp]
-z_coords_pp = [electron.position[2] for electron in electron_array_pp]
+#Write code to run here for encapsulation (SMYAN)
+if __name__ == "__main__":
+    # Create an array of Electron objects with random initial positions
+    electron_array_pp = [Electron(charge=e, position=[random.uniform(-x_range, x_range), 0, 0]) for _ in
+                         range(pp_electrons)]
+    electron_array_beam = [Electron(charge=e, position=[random.uniform(-x_range, x_range), 0, z_range]) for _ in
+                           range(beam_electrons)]
 
-# Extract x, y, z coordinates from each electron's position for beam_electrons
-x_coords_beam = [electron.position[0] for electron in electron_array_beam]
-y_coords_beam = [electron.position[1] for electron in electron_array_beam]
-z_coords_beam = [electron.position[2] for electron in electron_array_beam]
+    # Calculate distances for each electron
+    all_electrons = electron_array_pp + electron_array_beam
 
-# Plotting electrons from pp_electrons
-ax.scatter(x_coords_pp, y_coords_pp, z_coords_pp, c='b', marker='o', label='pp_electrons')
+    # 3D plot of electron positions
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
 
-# Plotting electrons from beam_electrons
-ax.scatter(x_coords_beam, y_coords_beam, z_coords_beam, c='r', marker='s', label='beam_electrons')
+    # Extract x, y, z coordinates from each electron's position for pp_electrons
+    x_coords_pp = [electron.position[0] for electron in electron_array_pp]
+    y_coords_pp = [electron.position[1] for electron in electron_array_pp]
+    z_coords_pp = [electron.position[2] for electron in electron_array_pp]
 
-# Set axis labels
-ax.set_xlabel('X')
-ax.set_ylabel('Y')
-ax.set_zlabel('Z')
+    # Extract x, y, z coordinates from each electron's position for beam_electrons
+    x_coords_beam = [electron.position[0] for electron in electron_array_beam]
+    y_coords_beam = [electron.position[1] for electron in electron_array_beam]
+    z_coords_beam = [electron.position[2] for electron in electron_array_beam]
 
-# Add a legend
-ax.legend()
+    # Plotting electrons from pp_electrons
+    ax.scatter(x_coords_pp, y_coords_pp, z_coords_pp, c='b', marker='o', label='pp_electrons')
 
-# Display the plot
-plt.show()
+    # Plotting electrons from beam_electrons
+    ax.scatter(x_coords_beam, y_coords_beam, z_coords_beam, c='r', marker='s', label='beam_electrons')
 
+    V = calculate_potential(electron_array_pp)
 
+    # Set axis labels
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
 
-def calculate_electric_field(position, q1,q2):
-    
-    E=1
+    # Add a legend
+    ax.legend()
 
-    return
+    # Display the plot
+    plt.show()
