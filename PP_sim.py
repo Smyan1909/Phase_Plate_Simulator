@@ -92,6 +92,10 @@ class Electron:
         #self.net_force = np.sum(self.colomb_force_matrix, axis=0)
         return np.sum(self.colomb_force_matrix, axis=0)
 
+    def kev_to_ms (self):
+
+       return math.sqrt(2 * self.charge / m_e)
+
     def magnetic_force(self, all_electrons, x, v):  # Biot–Savart law
         magnetic_forces = np.zeros((len(all_electrons), 3))
         for i, other in enumerate(all_electrons):
@@ -108,7 +112,7 @@ class Electron:
                     cross_product = np.cross(self.velocity, unit_vector)
 
                 if (first_run ==1):
-                    cross_product = np.cross((0,1,2), unit_vector) #rätta till initalvektorn
+                    cross_product = np.cross((0,self.kev_to_ms(),0), unit_vector) #rätta till initalvektorn
 
 
 
@@ -121,22 +125,6 @@ class Electron:
 
         return np.sum(self.magnetic_force_matrix, axis=0)
 
-    # Jag tror inte detta är korrekt, lorentz kraften är bara Colomb kraften + Magnet kraften (Smyan)
-    """
-    def lorentz_force(self, all_electrons):
-        lorentz_forces = np.zeros((len(all_electrons), 3))
-        for i, other in enumerate(all_electrons):
-            if other != self:
-                F_l = other.charge * (
-                            self.colomb_force_matrix[i] + np.cross(other.velocity, self.magnetic_force_matrix[i]))
-
-                lorentz_forces[i] = F_l
-        self.lorentz_force_matrix = lorentz_forces
-
-        print(f"Lorentz Forces for Electron {id(self)}:")
-        for force in lorentz_forces:
-            print(force)
-    """
 
     def total_force(self, all_electrons, x, v):
         return self.colomb_force(all_electrons=all_electrons, x=x) + self.magnetic_force(all_electrons=all_electrons, x=x, v=v)
@@ -190,6 +178,10 @@ if __name__ == "__main__":
             electron.rk4_integrator(time_step, all_electrons)
             electron.colomb_force(all_electrons, electron.position)
             electron.magnetic_force(all_electrons, electron.position, electron.velocity)
+
+
+        total_force_result = electron.total_force(all_electrons, electron.position, electron.velocity)
+        print(f'Total Force for Electron {id(electron)}:', total_force_result)
 
     first_run=0
 
