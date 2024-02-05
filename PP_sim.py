@@ -3,16 +3,18 @@ import math
 import numpy as np
 import matplotlib.pyplot as plt
 
-pp_electrons = 1000
+pp_electrons = 3
 beam_electrons = 0
+
+time_step = 1e-18
 
 # constants
 k = 8.988 * 10**9
 pp_electron_velocity = 18.7e6
 m_e = 9.1093837e-31
 e = 1.602 * 10 ** -19
-x_range = 0.50e-3
-y_range = 1.5e-3
+x_range = 0.15
+y_range = 0.15
 z_range = 0.5
 
 my0 = 1.2566370614*10**-6
@@ -32,7 +34,7 @@ class Electron:
         self.net_force = None  # Added attribute for net force
         self.mass = mass
 
-    def accelerate(self, all_electrons, x, v):
+    def accelerate(self, electric_field, magnetic_field):
         # Implement acceleration based on Lorentz force equation if needed
         pass
 
@@ -90,7 +92,10 @@ class Electron:
         #self.net_force = np.sum(self.colomb_force_matrix, axis=0)
         return np.sum(self.colomb_force_matrix, axis=0)
 
-    def magnetic_force(self, all_electrons, x, v):  # Biot–Savart law
+    def keV_to_ms (self):
+        return math.sqrt(2 * self.charge / m_e)
+
+    def magnetic_force(self, all_electrons, x):  # Biot–Savart law
         magnetic_forces = np.zeros((len(all_electrons), 3))
         for i, other in enumerate(all_electrons):
             if other != self:
@@ -102,7 +107,13 @@ class Electron:
 
                 unit_vector = np.array([rx, ry, rz]) / distance
 
-                cross_product = np.cross(v, unit_vector)
+                if( first_run==0):
+                    cross_product = np.cross(self.velocity, unit_vector)
+
+                if (first_run == 1):
+                    cross_product = np.cross((0,electron.keV_to_ms(),0), unit_vector)
+
+
                 b_factor = my0 / (4 * np.pi * distance ** 2)
                 F_b = b_factor * cross_product
                 magnetic_forces[i] = F_b
@@ -111,7 +122,6 @@ class Electron:
 
         return np.sum(self.magnetic_force_matrix, axis=0)
 
-    # Jag tror inte detta är korrekt, lorentz kraften är bara Colomb kraften + Magnet kraften (Smyan)
 
     def total_force(self, all_electrons, x, v):
         return self.colomb_force(all_electrons=all_electrons, x=x) + self.magnetic_force(all_electrons=all_electrons, x=x, v=v)
@@ -123,12 +133,13 @@ class Electron:
 #Calculate Potential
 def calculate_potential(elec_array):
 
-    x_ = np.linspace(0, x_range, 15)
+    x_ = np.linspace(-x_range, x_range, 15)
     y_ = np.linspace(-y_range, y_range, 15)
     z_ = np.linspace(0, z_range, 15)
     x, y, z = np.meshgrid(x_, y_, z_, indexing='ij')
 
     Vp = np.zeros((len(x), len(y), len(z)))
+
 
     for electron in elec_array:
 
@@ -140,18 +151,31 @@ def calculate_potential(elec_array):
 
     return Vp
 
+
+
 #Write code to run here for encapsulation (SMYAN)
 if __name__ == "__main__":
     # Create an array of Electron objects with random initial positions
-    electron_array_pp = [Electron(charge=e, position=[np.random.normal(i*0.5e-6+0.25e-6, 0.25e-6),
-                                                      1e-6*np.random.normal(0.0, 0.5),
-                                                      1e-6*np.random.normal(0.0, 0.5)]) for i in
+    electron_array_pp = [Electron(charge=e, position=[random.uniform(-x_range, x_range), 0, 0]) for _ in
                          range(pp_electrons)]
     electron_array_beam = [Electron(charge=e, position=[random.uniform(-x_range, x_range), 0, z_range]) for _ in
                            range(beam_electrons)]
 
     # Calculate distances for each electron
     all_electrons = electron_array_pp + electron_array_beam
+
+    first_run=1
+
+    for electron in all_electrons:
+        if(first_run==1):
+            electron.colomb_force(all_electrons, electron.position)
+            electron.magnetic_force(all_electrons, electron.position)
+
+        if (first_run == 0):
+            electron.rk4_integrator(electron, time_step, all_electrons)
+            electron.colomb_force(all_electrons, electron.position)
+            electron.magnetic_force(all_electrons, electron.position)
+
 
     # 3D plot of electron positions
     fig = plt.figure()
