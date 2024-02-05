@@ -111,7 +111,7 @@ class Electron:
                     cross_product = np.cross(self.velocity, unit_vector)
 
                 if (first_run == 1):
-                    cross_product = np.cross((0,electron.keV_to_ms(),0), unit_vector)
+                    cross_product = np.cross((0,electron.keV_to_ms(),0), unit_vector) #initial value
 
 
                 b_factor = my0 / (4 * np.pi * distance ** 2)
@@ -175,6 +175,8 @@ if __name__ == "__main__":
             electron.rk4_integrator(electron, time_step, all_electrons)
             electron.colomb_force(all_electrons, electron.position)
             electron.magnetic_force(all_electrons, electron.position)
+
+
 
 
     # 3D plot of electron positions
