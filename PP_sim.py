@@ -93,7 +93,6 @@ class Electron:
         return np.sum(self.colomb_force_matrix, axis=0)
 
     def kev_to_ms (self):
-
        return math.sqrt(2 * self.charge / m_e)
 
     def magnetic_force(self, all_electrons, x, v):  # Biot–Savart law
@@ -112,10 +111,7 @@ class Electron:
                     cross_product = np.cross(self.velocity, unit_vector)
 
                 if (first_run ==1):
-                    cross_product = np.cross((0,self.kev_to_ms(),0), unit_vector) #rätta till initalvektorn
-
-
-
+                    cross_product = np.cross((0,self.kev_to_ms(),0), unit_vector)
 
                 b_factor = my0 / (4 * np.pi * distance ** 2)
                 F_b = b_factor * cross_product
