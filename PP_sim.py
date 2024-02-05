@@ -3,7 +3,7 @@ import math
 import numpy as np
 import matplotlib.pyplot as plt
 
-pp_electrons = 3
+pp_electrons = 1000
 beam_electrons = 0
 
 time_step = 1e-18
@@ -175,7 +175,7 @@ if __name__ == "__main__":
 
         if (first_run == 0):
             print(f'NOT first run')
-            electron.rk4_integrator(electron, time_step, all_electrons)
+            electron.rk4_integrator(time_step, all_electrons)
             electron.colomb_force(all_electrons, electron.position)
             electron.magnetic_force(all_electrons, electron.position)
 
