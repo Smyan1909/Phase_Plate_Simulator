@@ -13,7 +13,7 @@ k = 8.988 * 10**9
 pp_electron_velocity = 18.7e6
 m_e = 9.1093837e-31
 e = 1.602 * 10 ** -19
-x_range = 0.15
+x_range = 0.50e-3
 y_range = 0.15
 z_range = 0.5
 
@@ -133,7 +133,7 @@ class Electron:
 #Calculate Potential
 def calculate_potential(elec_array):
 
-    x_ = np.linspace(-x_range, x_range, 15)
+    x_ = np.linspace(0, x_range, 15)
     y_ = np.linspace(-y_range, y_range, 15)
     z_ = np.linspace(0, z_range, 15)
     x, y, z = np.meshgrid(x_, y_, z_, indexing='ij')
@@ -156,8 +156,9 @@ def calculate_potential(elec_array):
 #Write code to run here for encapsulation (SMYAN)
 if __name__ == "__main__":
     # Create an array of Electron objects with random initial positions
-    electron_array_pp = [Electron(charge=e, position=[random.uniform(-x_range, x_range), 0, 0]) for _ in
-                         range(pp_electrons)]
+    electron_array_pp = [Electron(charge=e, position=[np.random.normal(i * 0.5e-6 + 0.25e-6, 0.25e-6),
+                                                      1e-6 * np.random.normal(0.0, 0.5),
+                                                      1e-6 * np.random.normal(0.0, 0.5)]) for i in range(pp_electrons)]
     electron_array_beam = [Electron(charge=e, position=[random.uniform(-x_range, x_range), 0, z_range]) for _ in
                            range(beam_electrons)]
 
