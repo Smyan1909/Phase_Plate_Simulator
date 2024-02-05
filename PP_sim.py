@@ -3,7 +3,7 @@ import math
 import numpy as np
 import matplotlib.pyplot as plt
 
-pp_electrons = 1000
+pp_electrons = 3
 beam_electrons = 0
 
 time_step = 1e-18
@@ -26,8 +26,9 @@ grid_size = 600  # 600x600 pixel grid for image
 
 
 class Electron:
-    def __init__(self, charge=None, position=None, velocity=None, acceleration=None, mass=m_e):
-        self.charge = charge  # keV
+    def __init__(self, charge=None, position=None, velocity=None, acceleration=None, mass=m_e, keV=None):
+        self.charge = charge
+        self.keV = keV
         self.position = position
         self.velocity = velocity
         self.acceleration = acceleration
@@ -46,7 +47,7 @@ class Electron:
         dt = time_step
 
         k1_v = dt*(self.total_force(all_electrons, self.position, self.velocity)/m_e)
-        k1_x = dt*self.velocity
+        k1_x = np.multiply(dt,self.velocity)
 
         k2_v = dt*(self.total_force(all_electrons, self.position + (k1_x/2), self.velocity + (k1_v/2))/m_e)
         k2_x = dt*(self.velocity + (k1_v/2))
@@ -98,7 +99,7 @@ class Electron:
         return np.sum(self.colomb_force_matrix, axis=0)
 
     def keV_to_ms (self):
-        return math.sqrt(2 * self.charge / m_e)
+        return math.sqrt(2 * self.keV / m_e)
 
     def magnetic_force(self, all_electrons, x, v):  # Biot–Savart law
         magnetic_forces = np.zeros((len(all_electrons), 3))
@@ -113,10 +114,14 @@ class Electron:
                 unit_vector = np.array([rx, ry, rz]) / distance
 
                 if( first_run==0):
-                    cross_product = np.cross(v, unit_vector)
+
+                    cross_product = np.cross(electron.velocity, unit_vector)
 
                 if (first_run == 1):
-                    cross_product = np.cross((0,electron.keV_to_ms(),0), unit_vector) #initial value
+                    if(self.keV==20):
+                        self.velocity=(0,electron.keV_to_ms(),0)#initial value
+                        print(f'velovity{self.velocity}')
+                    cross_product = np.cross(self.velocity, unit_vector)
 
 
                 b_factor = my0 / (4 * np.pi * distance ** 2)
@@ -164,33 +169,31 @@ def calculate_potential(elec_array):
 if __name__ == "__main__":
 
     # Create an array of Electron objects with random initial positions
-    electron_array_pp = [Electron(charge=e, position=[np.random.normal(i * 0.5e-6 + 0.25e-6, 0.25e-6),
+    electron_array_pp = [Electron(charge=e, keV=20, position=[np.random.normal(i * 0.5e-6 + 0.25e-6, 0.25e-6),
                                                       1e-6 * np.random.normal(0.0, 0.5),
                                                       1e-6 * np.random.normal(0.0, 0.5)]) for i in range(pp_electrons)]
+
     electron_array_beam = [Electron(charge=e, position=[random.uniform(-x_range, x_range), 0, z_range]) for _ in
                            range(beam_electrons)]
 
-    # Calculate distances for each electron
+
     all_electrons = electron_array_pp + electron_array_beam
 
     first_run = 1
-    """
-    for electron in all_electrons:
-        if(first_run==1):
-            print(f'First run')
-            electron.colomb_force(all_electrons, electron.position)
-            electron.magnetic_force(all_electrons, electron.position, electron.velocity)
+    for iteration in range(3):  # Outer loop for 3 iterations
+        for electron in all_electrons:
+            if first_run == 1:
+                print(f'First run')
+                electron.colomb_force(all_electrons, electron.position)
+                electron.magnetic_force(all_electrons, electron.position, electron.velocity)
 
-        if (first_run == 0):
-            print(f'NOT first run')
-            electron.rk4_integrator(time_step, all_electrons)
-            electron.colomb_force(all_electrons, electron.position)
-            electron.magnetic_force(all_electrons, electron.position, electron.velocity)
-        
-        first run = 0
-    """
+            if first_run == 0:
+                print(f'NOT first run')
+                electron.rk4_integrator(time_step, all_electrons)
+                electron.colomb_force(all_electrons, electron.position)
+                electron.magnetic_force(all_electrons, electron.position, electron.velocity)
 
-
+        first_run = 0
 
     # 3D plot of electron positions
     fig = plt.figure()
