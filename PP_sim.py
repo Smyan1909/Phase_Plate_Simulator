@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 pp_electrons = 3
 beam_electrons = 0
 
+time_step = 1e-18
+
 # constants
 k = 8.988 * 10**9
 pp_electron_velocity = 18.7e6
@@ -102,7 +104,15 @@ class Electron:
 
                 unit_vector = np.array([rx, ry, rz]) / distance
 
-                cross_product = np.cross(v, unit_vector)
+                if( first_run==0):
+                    cross_product = np.cross(self.velocity, unit_vector)
+
+                if (first_run ==1):
+                    cross_product = np.cross((0,1,2), unit_vector) #rätta till initalvektorn
+
+
+
+
                 b_factor = my0 / (4 * np.pi * distance ** 2)
                 F_b = b_factor * cross_product
                 magnetic_forces[i] = F_b
@@ -168,6 +178,20 @@ if __name__ == "__main__":
 
     # Calculate distances for each electron
     all_electrons = electron_array_pp + electron_array_beam
+
+    first_run = 1
+
+    for electron in all_electrons:
+        if(first_run==1):
+            electron.colomb_force(all_electrons, electron.position)
+            electron.magnetic_force(all_electrons, electron.position, electron.velocity)
+
+        if (first_run==0):
+            electron.rk4_integrator(time_step, all_electrons)
+            electron.colomb_force(all_electrons, electron.position)
+            electron.magnetic_force(all_electrons, electron.position, electron.velocity)
+
+    first_run=0
 
     # 3D plot of electron positions
     fig = plt.figure()
