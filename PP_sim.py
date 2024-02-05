@@ -60,7 +60,8 @@ class Electron:
         self.velocity += (1/6)*(k1_v + 2*k2_v + 2*k3_v + k4_v)
         self.position += (1/6)*(k1_x + 2*k2_x + 2*k3_x + k4_x)
 
-
+    """ Ta bort?? 
+    
     def distance(self, other):
         # Calculate the Euclidean distance between self and other electrons
         dx = self.position[0] - other.position[0]
@@ -72,7 +73,7 @@ class Electron:
         # Calculate distances from self to every other electron
         distances = [self.distance(other) for other in all_electrons]
         self.distance_matrix = np.array(distances)
-
+    """
     def colomb_force(self, all_electrons, x):
         colomb_forces = np.zeros((len(all_electrons), 3))  # Initialize forces array
         for i, other in enumerate(all_electrons):
@@ -183,6 +184,8 @@ if __name__ == "__main__":
             electron.rk4_integrator(time_step, all_electrons)
             electron.colomb_force(all_electrons, electron.position)
             electron.magnetic_force(all_electrons, electron.position, electron.velocity)
+        
+        first run = 0
     """
 
 
