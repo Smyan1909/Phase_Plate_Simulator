@@ -185,6 +185,8 @@ if __name__ == "__main__":
             electron.rk4_integrator(time_step, all_electrons)
             electron.colomb_force(all_electrons, electron.position)
             electron.magnetic_force(all_electrons, electron.position, electron.velocity)
+        
+        first run = 0
     """
 
 
