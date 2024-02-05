@@ -3,7 +3,7 @@ import math
 import numpy as np
 import matplotlib.pyplot as plt
 
-pp_electrons = 1000
+pp_electrons = 3
 beam_electrons = 0
 
 time_step = 1e-18
@@ -99,7 +99,7 @@ class Electron:
         return np.sum(self.colomb_force_matrix, axis=0)
 
     def keV_to_ms (self):
-        return math.sqrt(2 * self.keV / m_e)
+        return math.sqrt(2 * self.keV *1000*e/ m_e)
 
     def magnetic_force(self, all_electrons, x, v):  # Biot–Savart law
         magnetic_forces = np.zeros((len(all_electrons), 3))
@@ -178,7 +178,7 @@ if __name__ == "__main__":
     all_electrons = electron_array_pp + electron_array_beam
 
     first_run = 1
-    for iteration in range(3):  # Outer loop for 3 iterations
+    for iteration in range(3):
         for electron in all_electrons:
             if first_run == 1:
                 print(f'First run')
