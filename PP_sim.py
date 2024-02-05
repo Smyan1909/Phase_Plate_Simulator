@@ -166,10 +166,12 @@ if __name__ == "__main__":
 
     for electron in all_electrons:
         if(first_run==1):
+            print(f'First run!:')
             electron.colomb_force(all_electrons, electron.position)
             electron.magnetic_force(all_electrons, electron.position, electron.velocity)
 
         if (first_run==0):
+            print(f'NOT First run!:')
             electron.rk4_integrator(time_step, all_electrons)
             electron.colomb_force(all_electrons, electron.position)
             electron.magnetic_force(all_electrons, electron.position, electron.velocity)
