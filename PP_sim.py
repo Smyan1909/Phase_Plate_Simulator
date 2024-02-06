@@ -13,6 +13,7 @@ time_step = 1e-13
 # constants
 k = 8.988 * 10**9
 pp_electron_velocity = 18.7e6
+beam_electron_velocity = 18.7e7
 m_e = 9.1093837e-31
 e = 1.602 * 10 ** -19
 c = 299792458  # speed of light
@@ -120,18 +121,7 @@ class Electron:
                 distance = math.sqrt(rx ** 2 + ry ** 2 + rz ** 2)
                 unit_vector = np.array([rx, ry, rz]) / distance
 
-                #if( first_run==0):
-
                 cross_product = np.cross(v, unit_vector)
-
-
-                """
-                if (first_run == 1):
-                    if(self.keV==20):
-                        self.velocity = (0, electron.keV_to_ms(), 0) #initial value
-                        print(f'velovity{self.velocity}')
-                    cross_product = np.cross(self.velocity, unit_vector)
-                """
 
                 b_factor = (my0*self.charge) / (4 * np.pi * distance ** 2)
                 B = b_factor * cross_product
@@ -142,7 +132,7 @@ class Electron:
 
         return np.sum(self.magnetic_force_matrix, axis=0)
 
-
+"""""
     def relative_speed(self, beam_electrons): # måste ev fact checkas med teorin
 
         if(self.keV==200):
@@ -151,6 +141,7 @@ class Electron:
 
             self.velocity = c * math.sqrt(1-(1/(1+gamma**2)))
 
+"""
 
     def total_force(self, all_electrons, x, v):
         return self.colomb_force(all_electrons=all_electrons, x=x) + self.magnetic_force(all_electrons=all_electrons, x=x, v=v)
