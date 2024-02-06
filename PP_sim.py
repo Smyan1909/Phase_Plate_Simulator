@@ -6,7 +6,7 @@ from matplotlib.animation import FuncAnimation
 from mpl_toolkits.mplot3d import Axes3D
 
 pp_electrons = 100
-beam_electrons = 0
+beam_electrons = 1
 
 time_step = 1e-13
 
@@ -165,11 +165,12 @@ def update(num, all_electrons, dt, ax):
         electron.rk4_integrator(all_electrons=all_electrons, time_step=dt)
 
     ax.clear()
-    x_coords_pp = [electron.position[0] for electron in all_electrons]
-    y_coords_pp = [electron.position[1] for electron in all_electrons]
-    z_coords_pp = [electron.position[2] for electron in all_electrons]
-
-    ax.scatter(x_coords_pp, y_coords_pp, z_coords_pp, c="blue")
+    for electron in all_electrons:
+        x = electron.position[0]
+        y = electron.position[1]
+        z = electron.position[2]
+        color = "blue" if electron in electron_array_pp else "red"  # Check if the electron is from the beam
+        ax.scatter(x, y, z, c=color)
 
 #Write code to run here for encapsulation (SMYAN)
 if __name__ == "__main__":
@@ -179,7 +180,7 @@ if __name__ == "__main__":
                                                       1e-6 * np.random.normal(0, 0.5),
                                                       1e-6 * np.random.normal(0, 0.5)]), velocity=np.array([pp_electron_velocity, 0, 0])) for i in range(pp_electrons)]
 
-    electron_array_beam = [Electron(charge=e, position=[random.uniform(-x_range, x_range), 0, z_range]) for _ in
+    electron_array_beam = [Electron(charge=e, velocity=np.array([0, 0, -1* beam_electron_velocity]), position=[random.uniform(-x_range, x_range), 0, z_range]) for _ in
                            range(beam_electrons)]
 
 
