@@ -84,7 +84,6 @@ class Electron:
                 rz = x[2] - other.position[2]
 
                 distance = math.sqrt(rx**2 + ry**2 + rz**2)
-
                 unit_vector = np.array([rx, ry, rz]) / distance
 
                 # Calculate Coulomb force vector
@@ -94,8 +93,6 @@ class Electron:
 
         self.colomb_force_matrix = colomb_forces
 
-    # Calculate net force by summing forces along each dimension (x, y, z)
-        #self.net_force = np.sum(self.colomb_force_matrix, axis=0)
         return np.sum(self.colomb_force_matrix, axis=0)
 
     def keV_to_ms (self):
@@ -110,7 +107,6 @@ class Electron:
                 rz = x[2] - other.position[2]
 
                 distance = math.sqrt(rx ** 2 + ry ** 2 + rz ** 2)
-
                 unit_vector = np.array([rx, ry, rz]) / distance
 
                 if( first_run==0):
@@ -119,7 +115,7 @@ class Electron:
 
                 if (first_run == 1):
                     if(self.keV==20):
-                        self.velocity=(0,electron.keV_to_ms(),0)#initial value
+                        self.velocity=(0,electron.keV_to_ms(),0) #initial value
                         print(f'velovity{self.velocity}')
                     cross_product = np.cross(self.velocity, unit_vector)
 
