@@ -132,7 +132,7 @@ class Electron:
 
         return np.sum(self.magnetic_force_matrix, axis=0)
 
-"""""
+
     def relative_speed(self, beam_electrons): # måste ev fact checkas med teorin
 
         if(self.keV==200):
@@ -141,7 +141,6 @@ class Electron:
 
             self.velocity = c * math.sqrt(1-(1/(1+gamma**2)))
 
-"""
 
     def total_force(self, all_electrons, x, v):
         return self.colomb_force(all_electrons=all_electrons, x=x) + self.magnetic_force(all_electrons=all_electrons, x=x, v=v)
