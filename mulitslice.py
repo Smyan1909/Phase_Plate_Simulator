@@ -24,7 +24,7 @@ angstrom = 1e-10
 voxelsize = 0.5 #Ångström
 
 
-padding_size = 200  # This is an example value, adjust as needed
+padding_size = 50  # This is an example value, adjust as needed
 padded_pots = np.pad(pots, pad_width=padding_size, mode='constant', constant_values=0)
 def generate_grid(V):
     grid_size = np.array(V.shape[:2])  # Assuming V is 3D and grid size is based on the first two dimensions
@@ -150,7 +150,7 @@ if __name__ == "__main__":
     kx, ky = np.meshgrid(np.fft.fftfreq(len(x), d=(voxelsize*angstrom)), np.fft.fftfreq(len(y), d=(voxelsize*angstrom)))
     k = np.sqrt(kx ** 2 + ky ** 2)
 
-    H_0 = objective_transfer_function(k, wavelength, 10e-3, 1000e-9, 1)
+    H_0 = objective_transfer_function(k, wavelength, 10e-3, 100e-9, 1)
     #plt.figure(2)
     #plt.imshow(np.abs(H_0), cmap="gray_r")
     Im = H_0*np.fft.fft2(psi)

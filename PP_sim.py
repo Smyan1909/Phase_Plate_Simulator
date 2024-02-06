@@ -2,11 +2,13 @@ import random
 import math
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
+from mpl_toolkits.mplot3d import Axes3D
 
-pp_electrons = 3
+pp_electrons = 100
 beam_electrons = 0
 
-time_step = 1e-18
+time_step = 1e-13
 
 # constants
 k = 8.988 * 10**9
@@ -14,9 +16,9 @@ pp_electron_velocity = 18.7e6
 m_e = 9.1093837e-31
 e = 1.602 * 10 ** -19
 c = 299792458  # speed of light
-x_range = 0.50e-3
-y_range = 0.15
-z_range = 0.5
+x_range = 0.050e-3
+y_range = 50e-6
+z_range = 50e-6
 
 my0 = 1.2566370614*10**-6
 
@@ -48,7 +50,7 @@ class Electron:
         dt = time_step
 
         k1_v = dt*(self.total_force(all_electrons, self.position, self.velocity)/m_e)
-        k1_x = np.multiply(dt,self.velocity)
+        k1_x = dt * self.velocity
 
         k2_v = dt*(self.total_force(all_electrons, self.position + (k1_x/2), self.velocity + (k1_v/2))/m_e)
         k2_x = dt*(self.velocity + (k1_v/2))
@@ -62,6 +64,14 @@ class Electron:
         self.velocity += (1/6)*(k1_v + 2*k2_v + 2*k3_v + k4_v)
         self.position += (1/6)*(k1_x + 2*k2_x + 2*k3_x + k4_x)
 
+        if self.position[0] > x_range:
+            self.position = np.array([np.random.normal(0.5e-6 + 0.25e-6, 0.25e-6), 1e-6 * np.random.normal(0, 0.5),
+                             1e-6 * np.random.normal(0, 0.5)])
+
+    def Euler(self, time_step, all_electrons):
+
+        self.velocity += time_step*(self.total_force(all_electrons, self.position, self.velocity)/m_e)
+        self.position += time_step*self.velocity
     """ Ta bort?? 
     
     def distance(self, other):
@@ -110,32 +120,36 @@ class Electron:
                 distance = math.sqrt(rx ** 2 + ry ** 2 + rz ** 2)
                 unit_vector = np.array([rx, ry, rz]) / distance
 
-                if( first_run==0):
+                #if( first_run==0):
 
-                    cross_product = np.cross(electron.velocity, unit_vector)
+                cross_product = np.cross(v, unit_vector)
 
+
+                """
                 if (first_run == 1):
-                    if(self.keV == 20):
-                        self.velocity=(0,electron.keV_to_ms(),0) #initial value
-
+                    if(self.keV==20):
+                        self.velocity = (0, electron.keV_to_ms(), 0) #initial value
+                        print(f'velovity{self.velocity}')
                     cross_product = np.cross(self.velocity, unit_vector)
+                """
 
-
-                b_factor = my0 / (4 * np.pi * distance ** 2)
-                F_b = b_factor * cross_product
+                b_factor = (my0*self.charge) / (4 * np.pi * distance ** 2)
+                B = b_factor * cross_product
+                F_b = self.charge*np.cross(v, B)
                 magnetic_forces[i] = F_b
 
         self.magnetic_force_matrix = magnetic_forces
 
         return np.sum(self.magnetic_force_matrix, axis=0)
 
+
     def relative_speed(self, beam_electrons): # måste ev fact checkas med teorin
 
         if(self.keV==200):
 
-            gamma= (1000*self.keV/(m_e*c**2))+1  # Lorentz factor
+            gamma = (1000*self.keV/(m_e*c**2))+1  # Lorentz factor
 
-            self.velocity= c * math.sqrt(1-(1/(1+gamma**2)))
+            self.velocity = c * math.sqrt(1-(1/(1+gamma**2)))
 
 
     def total_force(self, all_electrons, x, v):
@@ -148,9 +162,9 @@ class Electron:
 #Calculate Potential
 def calculate_potential(elec_array):
 
-    x_ = np.linspace(0, 0.0005, num=100)
+    x_ = np.linspace(0.0002, 0.0003, num=100)
     y_ = np.linspace(-20e-6, 20e-6, num=100)
-    z_ = np.linspace(-20e-6, 20e-6, num=100)
+    z_ = np.linspace(-30e-6, 30e-6, num=100)
     x, y, z = np.meshgrid(x_, y_, z_)
 
     Vp = np.zeros((len(x), len(y), len(z)))
@@ -166,15 +180,27 @@ def calculate_potential(elec_array):
 
     return Vp, dz
 
+def update(num, all_electrons, dt, ax):
+    ax.set_xlim([0, x_range])
+    ax.set_ylim([-y_range, y_range])
+    ax.set_zlim([-z_range, z_range])
+    for electron in all_electrons:
+        electron.rk4_integrator(all_electrons=all_electrons, time_step=dt)
 
+    ax.clear()
+    x_coords_pp = [electron.position[0] for electron in all_electrons]
+    y_coords_pp = [electron.position[1] for electron in all_electrons]
+    z_coords_pp = [electron.position[2] for electron in all_electrons]
+
+    ax.scatter(x_coords_pp, y_coords_pp, z_coords_pp, c="blue")
 
 #Write code to run here for encapsulation (SMYAN)
 if __name__ == "__main__":
 
     # Create an array of Electron objects with random initial positions
-    electron_array_pp = [Electron(charge=e, keV=20, position=[np.random.normal(i * 0.5e-6 + 0.25e-6, 0.25e-6),
+    electron_array_pp = [Electron(charge=e, keV=20, position=np.array([np.random.normal(i * 0.5e-6 + 0.25e-6, 0.25e-6),
                                                       1e-6 * np.random.normal(0, 0.5),
-                                                      1e-6 * np.random.normal(0, 0.5)]) for i in range(pp_electrons)]
+                                                      1e-6 * np.random.normal(0, 0.5)]), velocity=np.array([pp_electron_velocity, 0, 0])) for i in range(pp_electrons)]
 
     electron_array_beam = [Electron(charge=e, position=[random.uniform(-x_range, x_range), 0, z_range]) for _ in
                            range(beam_electrons)]
@@ -182,27 +208,22 @@ if __name__ == "__main__":
 
     all_electrons = electron_array_pp + electron_array_beam
 
+
     first_run = 1
     runs = pp_electrons+beam_electrons
-    for iteration in range(runs):
-        for electron in all_electrons:
-            if first_run == 1:
-               # print(f'First run')
-                electron.colomb_force(all_electrons, electron.position)
-                electron.magnetic_force(all_electrons, electron.position, electron.velocity)
+    """
+    for electron in all_electrons:
+            print(electron.position)
+            electron.rk4_integrator(time_step=time_step, all_electrons=all_electrons)
+            print(electron.position)
 
-            if first_run == 0:
-                #print(f'NOT first run')
-                electron.rk4_integrator(time_step, all_electrons)
-                electron.colomb_force(all_electrons, electron.position)
-                electron.magnetic_force(all_electrons, electron.position, electron.velocity)
-
-        first_run = 0
-
+    first_run   = 0
+    """
     # 3D plot of electron positions
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
+    """
     # Extract x, y, z coordinates from each electron's position for pp_electrons
     x_coords_pp = [electron.position[0] for electron in electron_array_pp]
     y_coords_pp = [electron.position[1] for electron in electron_array_pp]
@@ -212,26 +233,27 @@ if __name__ == "__main__":
     x_coords_beam = [electron.position[0] for electron in electron_array_beam]
     y_coords_beam = [electron.position[1] for electron in electron_array_beam]
     z_coords_beam = [electron.position[2] for electron in electron_array_beam]
-
+    """
+    """
     # Plotting electrons from pp_electrons
     ax.scatter(x_coords_pp, y_coords_pp, z_coords_pp, c='b', marker='o', label='pp_electrons')
 
     # Plotting electrons from beam_electrons
     ax.scatter(x_coords_beam, y_coords_beam, z_coords_beam, c='r', marker='s', label='beam_electrons')
+    """
+    #V, dz = calculate_potential(electron_array_pp)
 
-    V, dz = calculate_potential(electron_array_pp)
-
-    fig2 = plt.figure()
-    ax2 = fig2.add_subplot(111)
-    ax2.imshow(np.sum(V, axis=2)*dz)
-
+    #fig2 = plt.figure()
+    #ax2 = fig2.add_subplot(111)
+    #ax2.imshow(np.sum(V, axis=2)*dz)
+    ani = FuncAnimation(fig, update, frames=range(200), fargs=(all_electrons, time_step, ax))
     # Set axis labels
     ax.set_xlabel('X')
     ax.set_ylabel('Y')
     ax.set_zlabel('Z')
 
     # Add a legend
-    ax.legend()
+    #ax.legend()
 
     # Display the plot
     plt.show()
