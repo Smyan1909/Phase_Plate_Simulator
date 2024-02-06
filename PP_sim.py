@@ -13,6 +13,7 @@ k = 8.988 * 10**9
 pp_electron_velocity = 18.7e6
 m_e = 9.1093837e-31
 e = 1.602 * 10 ** -19
+c = 299792458  # speed of light
 x_range = 0.50e-3
 y_range = 0.15
 z_range = 0.5
@@ -114,9 +115,9 @@ class Electron:
                     cross_product = np.cross(electron.velocity, unit_vector)
 
                 if (first_run == 1):
-                    if(self.keV==20):
+                    if(self.keV == 20):
                         self.velocity=(0,electron.keV_to_ms(),0) #initial value
-                        print(f'velovity{self.velocity}')
+
                     cross_product = np.cross(self.velocity, unit_vector)
 
 
@@ -127,6 +128,14 @@ class Electron:
         self.magnetic_force_matrix = magnetic_forces
 
         return np.sum(self.magnetic_force_matrix, axis=0)
+
+    def relative_speed(self, beam_electrons): # måste ev fact checkas med teorin
+
+        if(self.keV==200):
+
+            gamma= (1000*self.keV/(m_e*c**2))+1  # Lorentz factor
+
+            self.velocity= c * math.sqrt(1-(1/(1+gamma**2)))
 
 
     def total_force(self, all_electrons, x, v):
@@ -174,15 +183,16 @@ if __name__ == "__main__":
     all_electrons = electron_array_pp + electron_array_beam
 
     first_run = 1
-    for iteration in range(3):
+    runs = pp_electrons+beam_electrons
+    for iteration in range(runs):
         for electron in all_electrons:
             if first_run == 1:
-                print(f'First run')
+               # print(f'First run')
                 electron.colomb_force(all_electrons, electron.position)
                 electron.magnetic_force(all_electrons, electron.position, electron.velocity)
 
             if first_run == 0:
-                print(f'NOT first run')
+                #print(f'NOT first run')
                 electron.rk4_integrator(time_step, all_electrons)
                 electron.colomb_force(all_electrons, electron.position)
                 electron.magnetic_force(all_electrons, electron.position, electron.velocity)
