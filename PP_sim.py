@@ -2,8 +2,10 @@ import random
 import math
 import numpy as np
 import matplotlib.pyplot as plt
+import time
 from matplotlib.animation import FuncAnimation
 from mpl_toolkits.mplot3d import Axes3D
+
 
 pp_electrons = 100
 beam_electrons = 1
