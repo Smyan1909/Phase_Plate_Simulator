@@ -6,9 +6,8 @@ import time
 from matplotlib.animation import FuncAnimation
 from mpl_toolkits.mplot3d import Axes3D
 
-
 pp_electrons = 100
-beam_electrons = 1
+beam_electrons = 0
 
 time_step = 1e-13
 
@@ -46,7 +45,7 @@ class Electron:
         self.mass = mass
 
     def accelerate(self, electric_field, magnetic_field):
-        # Implement acceleration based on Lorentz force equation if needed
+
         pass
 
     def rk4_integrator(self, time_step, all_electrons):
@@ -171,7 +170,7 @@ def update(num, all_electrons, dt, ax):
         x = electron.position[0]
         y = electron.position[1]
         z = electron.position[2]
-        color = "blue" if electron in electron_array_pp else "red"  # Check if the electron is from the beam
+        color = "blue" if electron in electron_array_pp else "red"
         ax.scatter(x, y, z, c=color)
 
 #Write code to run here for encapsulation (SMYAN)
@@ -234,6 +233,18 @@ if __name__ == "__main__":
 
     # Add a legend
     #ax.legend()
+
+    # Display the plot
+    plt.show()
+
+    ani = FuncAnimation(fig, update, frames=range(200), fargs=(all_electrons, time_step, ax))
+    # Set axis labels
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+
+    # Add a legend
+    # ax.legend()
 
     # Display the plot
     plt.show()
