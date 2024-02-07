@@ -6,8 +6,8 @@ import time
 from matplotlib.animation import FuncAnimation
 from mpl_toolkits.mplot3d import Axes3D
 
-pp_electrons = 100
-beam_electrons = 0
+pp_electrons = 1000
+beam_electrons = 5
 
 time_step = 1e-13
 
@@ -173,6 +173,27 @@ def update(num, all_electrons, dt, ax):
         color = "blue" if electron in electron_array_pp else "red"
         ax.scatter(x, y, z, c=color)
 
+
+
+# Räkna om nån beam electron slungas iväg z>0: se fulkod main
+beam_electron_index = 0
+frames_passed = 0
+beam_positions = []
+
+def simulate_beam_electrons():
+    global beam_electron_index, frames_passed, beam_positions
+
+    while beam_electron_index < len(electron_array_beam):
+        electron = electron_array_beam[beam_electron_index]
+        for _ in range(10):  # Perform 10 iterations of RK4 integration
+            electron.rk4_integrator(all_electrons=electron_array_pp + [electron], time_step=time_step)
+        beam_positions.append(electron.position)
+        beam_electron_index += 1
+
+
+
+
+
 #Write code to run here for encapsulation (SMYAN)
 if __name__ == "__main__":
 
@@ -188,8 +209,19 @@ if __name__ == "__main__":
     all_electrons = electron_array_pp + electron_array_beam
 
 
-    first_run = 1
-    runs = pp_electrons+beam_electrons
+
+    simulate_beam_electrons()
+    print("Positions of Beam Electrons after 10 iterations:")
+    for i, pos in enumerate(beam_positions):
+        print(f"Beam Electron {i + 1}: {pos}")
+
+    beam_positions_np = np.array(beam_positions)
+    has_z_above_zero = np.any(beam_positions_np[:, 2] > 0)
+    print(has_z_above_zero)
+
+
+
+
     """
     for electron in all_electrons:
             print(electron.position)
@@ -225,7 +257,9 @@ if __name__ == "__main__":
     #fig2 = plt.figure()
     #ax2 = fig2.add_subplot(111)
     #ax2.imshow(np.sum(V, axis=2)*dz)
+
     ani = FuncAnimation(fig, update, frames=range(200), fargs=(all_electrons, time_step, ax))
+
     # Set axis labels
     ax.set_xlabel('X')
     ax.set_ylabel('Y')
