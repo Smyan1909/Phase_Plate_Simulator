@@ -6,14 +6,16 @@ import time
 from matplotlib.animation import FuncAnimation
 from mpl_toolkits.mplot3d import Axes3D
 
-pp_electrons = 100
+pp_electrons = 2
 beam_electrons = 0
 
-time_step = 1e-13
+time_step = 1e-14
 
 # constants
 k = 8.988 * 10**9
-pp_electron_velocity = 18.7e6
+#pp_electron_velocity = 18.7e6
+pp_electron_velocity = 0.0
+
 beam_electron_velocity = 18.7e7
 m_e = 9.1093837e-31
 e = 1.602 * 10 ** -19
@@ -44,9 +46,6 @@ class Electron:
         self.net_force = None  # Added attribute for net force
         self.mass = mass
 
-    def accelerate(self, electric_field, magnetic_field):
-
-        pass
 
     def rk4_integrator(self, time_step, all_electrons):
         dt = time_step
@@ -95,9 +94,7 @@ class Electron:
 
         return np.sum(self.colomb_force_matrix, axis=0)
 
-    def keV_to_ms (self):
-        return math.sqrt(2 * self.keV *1000*e/ m_e)
-
+   
     def magnetic_force(self, all_electrons, x, v):  # Biot–Savart law
         magnetic_forces = np.zeros((len(all_electrons), 3))
         for i, other in enumerate(all_electrons):
@@ -172,26 +169,9 @@ def update(num, all_electrons, dt, ax):
         z = electron.position[2]
         color = "blue" if electron in electron_array_pp else "red"
         ax.scatter(x, y, z, c=color)
-
-
-
-# Räkna om nån beam electron slungas iväg z>0: se fulkod main
-beam_electron_index = 0
-frames_passed = 0
-beam_positions = []
-
-"""
-def simulate_beam_electrons():
-    global beam_electron_index, frames_passed, beam_positions
-
-    while beam_electron_index < len(electron_array_beam):
-        electron = electron_array_beam[beam_electron_index]
-        for _ in range(10):  # Perform 10 iterations of RK4 integration
-            electron.rk4_integrator(all_electrons=electron_array_pp + [electron], time_step=time_step)
-        beam_positions.append(electron.position)
-        beam_electron_index += 1
-"""
-
+    
+    # Print position of each electron
+        print(f"Electron position: ({x}, {y}, {z})")
 
 
 
@@ -199,9 +179,9 @@ def simulate_beam_electrons():
 if __name__ == "__main__":
 
     # Create an array of Electron objects with random initial positions
-    electron_array_pp = [Electron(charge=e, keV=20, position=np.array([np.random.normal(i * 0.5e-6 + 0.25e-6, 0.25e-6),
-                                                      1e-6 * np.random.normal(0, 0.5),
-                                                      1e-6 * np.random.normal(0, 0.5)]), velocity=np.array([pp_electron_velocity, 0, 0])) for i in range(pp_electrons)]
+    electron_array_pp = [Electron(charge=e, keV=20, position=np.array([(i * 1e-8 + 1e-8),
+                                                      0,
+                                                      0]), velocity=np.array([pp_electron_velocity, 0, 0])) for i in range(pp_electrons)]
 
     electron_array_beam = [Electron(charge=e, velocity=np.array([0, 0, -1* beam_electron_velocity]), position=[random.uniform(-x_range, x_range), 0, z_range]) for _ in
                            range(beam_electrons)]
@@ -209,53 +189,10 @@ if __name__ == "__main__":
 
     all_electrons = electron_array_pp + electron_array_beam
 
-    """
-    print("Positions of Beam Electrons after 10 iterations:")
-    for i, pos in enumerate(beam_positions):
-        print(f"Beam Electron {i + 1}: {pos}")
-
-    beam_positions_np = np.array(beam_positions)
-    has_z_above_zero = np.any(beam_positions_np[:, 2] > 0)
-    print(has_z_above_zero)
-
-    """
-
-
-    """
-    for electron in all_electrons:
-            print(electron.position)
-            electron.rk4_integrator(time_step=time_step, all_electrons=all_electrons)
-            print(electron.position)
-
-    first_run   = 0
-    """
+    
     # 3D plot of electron positions
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-
-    """
-    # Extract x, y, z coordinates from each electron's position for pp_electrons
-    x_coords_pp = [electron.position[0] for electron in electron_array_pp]
-    y_coords_pp = [electron.position[1] for electron in electron_array_pp]
-    z_coords_pp = [electron.position[2] for electron in electron_array_pp]
-
-    # Extract x, y, z coordinates from each electron's position for beam_electrons
-    x_coords_beam = [electron.position[0] for electron in electron_array_beam]
-    y_coords_beam = [electron.position[1] for electron in electron_array_beam]
-    z_coords_beam = [electron.position[2] for electron in electron_array_beam]
-    """
-    """
-    # Plotting electrons from pp_electrons
-    ax.scatter(x_coords_pp, y_coords_pp, z_coords_pp, c='b', marker='o', label='pp_electrons')
-
-    # Plotting electrons from beam_electrons
-    ax.scatter(x_coords_beam, y_coords_beam, z_coords_beam, c='r', marker='s', label='beam_electrons')
-    """
-    #V, dz = calculate_potential(electron_array_pp)
-
-    #fig2 = plt.figure()
-    #ax2 = fig2.add_subplot(111)
-    #ax2.imshow(np.sum(V, axis=2)*dz)
 
     ani = FuncAnimation(fig, update, frames=range(200), fargs=(all_electrons, time_step, ax))
 
@@ -267,8 +204,6 @@ if __name__ == "__main__":
     # Add a legend
     #ax.legend()
 
-    # Add a legend
-    # ax.legend()
-
     # Display the plot
     plt.show()
+

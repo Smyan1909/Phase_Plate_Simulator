@@ -16,8 +16,11 @@ m_relativistic = (1/np.sqrt(1-((v**2)/(c**2))))*m_e
 
 sigma_e = 2*np.pi*m_relativistic*e*wavelength/(h**2) #Interaction parameter
 
+
+filename = "4xcd_600.mrc"
+
 #Load the file to run
-with mrcfile.open("4xcd_600.mrc") as mrc:
+with mrcfile.open(filename) as mrc:
     pots = mrc.data
 
 angstrom = 1e-10
@@ -150,7 +153,7 @@ if __name__ == "__main__":
     kx, ky = np.meshgrid(np.fft.fftfreq(len(x), d=(voxelsize*angstrom)), np.fft.fftfreq(len(y), d=(voxelsize*angstrom)))
     k = np.sqrt(kx ** 2 + ky ** 2)
 
-    H_0 = objective_transfer_function(k, wavelength, 10e-3, 100e-9, 1)
+    H_0 = objective_transfer_function(k, wavelength, 10e-3, 1000e-9, 1)
     #plt.figure(2)
     #plt.imshow(np.abs(H_0), cmap="gray_r")
     Im = H_0*np.fft.fft2(psi)
