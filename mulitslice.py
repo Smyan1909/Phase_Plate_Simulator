@@ -10,7 +10,6 @@ c = 299792458 #Speed of light in m/s
 m_e = 9.1093937*10**-31 #Electron mass in kg
 wavelength = (h*c)/np.sqrt((e*V_a)**2 + 2*e*V_a*m_e*(c**2)) #Relativistically corrected de Broglie wavelength for fast moving electrons
 
-
 v = np.sqrt(2*(e*V_a)/m_e)
 m_relativistic = (1/np.sqrt(1-((v**2)/(c**2))))*m_e
 
@@ -142,24 +141,40 @@ def objective_transfer_function(k, lambda_, Cs, delta_f, A_k):
     chi_k = lens_abber_func(k, lambda_, Cs, delta_f)
     return np.exp(-1j * chi_k) * A_k
 
-
-if __name__ == "__main__":
+def test_mult():
     x, y = generate_grid(pots)
     psi = multislice(x, y, 600)
 
     plt.figure(1)
-    plt.imshow(np.abs(psi)**2, cmap="gray_r")
+    plt.imshow(np.abs(psi) ** 2, cmap="gray_r")
 
-    kx, ky = np.meshgrid(np.fft.fftfreq(len(x), d=(voxelsize*angstrom)), np.fft.fftfreq(len(y), d=(voxelsize*angstrom)))
+    kx, ky = np.meshgrid(np.fft.fftfreq(len(x), d=(voxelsize * angstrom)),
+                         np.fft.fftfreq(len(y), d=(voxelsize * angstrom)))
     k = np.sqrt(kx ** 2 + ky ** 2)
 
     H_0 = objective_transfer_function(k, wavelength, 10e-3, 1000e-9, 1)
-    #plt.figure(2)
-    #plt.imshow(np.abs(H_0), cmap="gray_r")
-    Im = H_0*np.fft.fft2(psi)
+    # plt.figure(2)
+    # plt.imshow(np.abs(H_0), cmap="gray_r")
+    Im = H_0 * np.fft.fft2(psi)
 
     plt.figure(2)
-    plt.imshow(np.abs(np.fft.ifft2(Im))**2, cmap="gray_r")
+    plt.imshow(np.abs(np.fft.ifft2(Im)) ** 2, cmap="gray_r")
     plt.show()
+
+# d = k*lambda*z
+def freq_analysis():
+    x, y = generate_grid(pots)
+
+    focal_length = 4e-3 #m
+
+    kx = np.fft.fftshift(np.fft.fftfreq(len(x), d=(voxelsize*angstrom)))
+    ky = np.fft.fftfreq(len(y), d=(voxelsize*angstrom))
+
+    print(kx*wavelength*focal_length*10**6)
+
+
+if __name__ == "__main__":
+    test_mult()
+    #freq_analysis()
 
 

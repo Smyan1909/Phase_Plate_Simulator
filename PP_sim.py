@@ -5,8 +5,9 @@ import matplotlib.pyplot as plt
 import time
 from matplotlib.animation import FuncAnimation
 from mpl_toolkits.mplot3d import Axes3D
+import mulitslice as mt
 
-pp_electrons = 100
+pp_electrons = 200
 beam_electrons = 0
 
 time_step = 1e-13
@@ -18,7 +19,7 @@ beam_electron_velocity = 18.7e7
 m_e = 9.1093837e-31
 e = 1.602 * 10 ** -19
 c = 299792458  # speed of light
-x_range = 0.050e-3
+x_range = 0.10e-3
 y_range = 50e-6
 z_range = 50e-6
 
@@ -140,9 +141,9 @@ class Electron:
 #Calculate Potential
 def calculate_potential(elec_array):
 
-    x_ = np.linspace(0.0002, 0.0003, num=100)
-    y_ = np.linspace(-20e-6, 20e-6, num=100)
-    z_ = np.linspace(-30e-6, 30e-6, num=100)
+    x_ = np.linspace(0, x_range, num=100)
+    y_ = np.linspace(-y_range, y_range, num=100)
+    z_ = np.linspace(-z_range, z_range, num=100)
     x, y, z = np.meshgrid(x_, y_, z_)
 
     Vp = np.zeros((len(x), len(y), len(z)))
@@ -251,11 +252,11 @@ if __name__ == "__main__":
     # Plotting electrons from beam_electrons
     ax.scatter(x_coords_beam, y_coords_beam, z_coords_beam, c='r', marker='s', label='beam_electrons')
     """
-    #V, dz = calculate_potential(electron_array_pp)
+    V, dz = calculate_potential(electron_array_pp)
 
-    #fig2 = plt.figure()
-    #ax2 = fig2.add_subplot(111)
-    #ax2.imshow(np.sum(V, axis=2)*dz)
+    fig2 = plt.figure()
+    ax2 = fig2.add_subplot(111)
+    ax2.imshow(np.sum(V, axis=2)*dz)
 
     ani = FuncAnimation(fig, update, frames=range(200), fargs=(all_electrons, time_step, ax))
 
