@@ -16,7 +16,7 @@ m_relativistic = (1/np.sqrt(1-((v**2)/(c**2))))*m_e
 sigma_e = 2*np.pi*m_relativistic*e*wavelength/(h**2) #Interaction parameter
 
 
-filename = "4xcd_600.mrc"
+filename = "4xcd.mrc"
 
 #Load the file to run
 with mrcfile.open(filename) as mrc:
@@ -143,7 +143,7 @@ def objective_transfer_function(k, lambda_, Cs, delta_f, A_k):
 
 def test_mult():
     x, y = generate_grid(pots)
-    psi = multislice(x, y, 600)
+    psi = multislice(x, y, 400)
 
     plt.figure(1)
     plt.imshow(np.abs(psi) ** 2, cmap="gray_r")
@@ -152,7 +152,7 @@ def test_mult():
                          np.fft.fftfreq(len(y), d=(voxelsize * angstrom)))
     k = np.sqrt(kx ** 2 + ky ** 2)
 
-    H_0 = objective_transfer_function(k, wavelength, 10e-3, 1000e-9, 1)
+    H_0 = objective_transfer_function(k, wavelength, 10e-3, 200e-9, 1)
     # plt.figure(2)
     # plt.imshow(np.abs(H_0), cmap="gray_r")
     Im = H_0 * np.fft.fft2(psi)
@@ -167,14 +167,15 @@ def freq_analysis():
 
     focal_length = 4e-3 #m
 
-    kx = np.fft.fftshift(np.fft.fftfreq(len(x), d=(voxelsize*angstrom)))
+    kx = np.fft.fftfreq(len(x), d=(voxelsize*angstrom))
     ky = np.fft.fftfreq(len(y), d=(voxelsize*angstrom))
 
-    print(kx*wavelength*focal_length*10**6)
+
+    return (kx[1]-kx[0])*wavelength*focal_length, np.fft.fftshift(kx)[0]*wavelength*focal_length, np.fft.fftshift(kx)[-1]*wavelength*focal_length
 
 
 if __name__ == "__main__":
     test_mult()
-    #freq_analysis()
+    #print(freq_analysis())
 
 

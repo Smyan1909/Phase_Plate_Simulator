@@ -6,8 +6,10 @@ import time
 from matplotlib.animation import FuncAnimation
 from mpl_toolkits.mplot3d import Axes3D
 import mulitslice as mt
+import scipy.spatial.distance as distance
 
-pp_electrons = 200
+
+pp_electrons = 400
 beam_electrons = 0
 
 time_step = 1e-13
@@ -20,14 +22,14 @@ m_e = 9.1093837e-31
 e = 1.602 * 10 ** -19
 c = 299792458  # speed of light
 x_range = 0.10e-3
-y_range = 50e-6
-z_range = 50e-6
+y_range = 0.10e-3
+z_range = 0.10e-3
 
 my0 = 1.2566370614*10**-6
 
 angstrom = 1e-10
 voxelsize = 0.5  # Ångström
-grid_size = 600  # 600x600 pixel grid for image
+grid_size = 400  # 600x600 pixel grid for image
 
 
 
@@ -139,14 +141,14 @@ class Electron:
 #Den gör samma beräkning men med vectorer och meshgrid istället för index beräkning som använder sig
 #av C bibliotek inuti numpy
 #Calculate Potential
-def calculate_potential(elec_array):
+def calculate_potential(elec_array, step_size, start_range, stop_range):
 
-    x_ = np.linspace(0, x_range, num=100)
-    y_ = np.linspace(-y_range, y_range, num=100)
-    z_ = np.linspace(-z_range, z_range, num=100)
-    x, y, z = np.meshgrid(x_, y_, z_)
+    x_ = np.arange(start_range, stop_range+step_size, step_size)
+    y_ = np.arange(start_range, stop_range+step_size, step_size)
+    z_ = np.arange(start_range, stop_range+step_size, step_size)
+    x, y, z = np.meshgrid(x_, y_, z_, sparse=True)
 
-    Vp = np.zeros((len(x), len(y), len(z)))
+    Vp = np.zeros((len(x_), len(y_), len(z_)))
     dz = z_[1]-z_[0]
 
     for electron in elec_array:
@@ -157,10 +159,42 @@ def calculate_potential(elec_array):
 
         Vp += k * (electron.charge / dist)
 
+
+
+    return Vp, dz
+
+def calculate_potential_fast(elec_array, step_size):
+    # Generate grid points
+    x_ = np.linspace(-x_range, x_range, 100)
+    y_ = np.linspace(-y_range, y_range, 100)
+    z_ = np.linspace(-z_range, z_range, 100)
+    x, y, z = np.meshgrid(x_, y_, z_, sparse=True)
+
+    # Flatten the grid arrays for distance calculations
+    grid_points = np.vstack([x.ravel(), y.ravel(), z.ravel()]).T
+
+    # Initialize the potential array
+    Vp = np.zeros(grid_points.shape[0])
+
+    # Calculate distances and update potentials for each electron
+    for electron in elec_array:
+        elec_pos = np.array([electron.position])  # Make it 2D for cdist compatibility
+        # Calculate distances from this electron to all grid points
+        dist = distance.cdist(grid_points, elec_pos).flatten()
+        print(dist)
+        # Update the potential array - avoid division by zero
+        Vp += k*(-e/dist)
+
+    # Reshape Vp to the original grid shape
+    Vp = Vp.reshape(x.shape)
+
+    # Calculate dz for return, assuming uniform spacing
+    dz = z_[1] - z_[0]
+
     return Vp, dz
 
 def update(num, all_electrons, dt, ax):
-    ax.set_xlim([0, x_range])
+    ax.set_xlim([-x_range, x_range])
     ax.set_ylim([-y_range, y_range])
     ax.set_zlim([-z_range, z_range])
     for electron in all_electrons:
@@ -171,7 +205,8 @@ def update(num, all_electrons, dt, ax):
         x = electron.position[0]
         y = electron.position[1]
         z = electron.position[2]
-        color = "blue" if electron in electron_array_pp else "red"
+        #color = "blue" if electron in electron_array_pp else "red"
+        color = "blue"
         ax.scatter(x, y, z, c=color)
 
 
@@ -193,20 +228,16 @@ def simulate_beam_electrons():
         beam_electron_index += 1
 """
 
-
-
-
-#Write code to run here for encapsulation (SMYAN)
-if __name__ == "__main__":
-
+def tester_1():
     # Create an array of Electron objects with random initial positions
-    electron_array_pp = [Electron(charge=e, keV=20, position=np.array([np.random.normal(i * 0.5e-6 + 0.25e-6, 0.25e-6),
-                                                      1e-6 * np.random.normal(0, 0.5),
-                                                      1e-6 * np.random.normal(0, 0.5)]), velocity=np.array([pp_electron_velocity, 0, 0])) for i in range(pp_electrons)]
+    electron_array_pp = [Electron(charge=e, keV=20, position=np.array([np.random.normal((i * 0.5e-6 + 0.25e-6)-x_range, 0.25e-6),
+                                                                       1e-6 * np.random.normal(0, 0.5),
+                                                                       1e-6 * np.random.normal(0, 0.5)]),
+                                  velocity=np.array([pp_electron_velocity, 0, 0])) for i in range(pp_electrons)]
 
-    electron_array_beam = [Electron(charge=e, velocity=np.array([0, 0, -1* beam_electron_velocity]), position=[random.uniform(-x_range, x_range), 0, z_range]) for _ in
+    electron_array_beam = [Electron(charge=e, velocity=np.array([0, 0, -1 * beam_electron_velocity]),
+                                    position=[random.uniform(-x_range, x_range), 0, z_range]) for _ in
                            range(beam_electrons)]
-
 
     all_electrons = electron_array_pp + electron_array_beam
 
@@ -220,7 +251,6 @@ if __name__ == "__main__":
     print(has_z_above_zero)
 
     """
-
 
     """
     for electron in all_electrons:
@@ -256,7 +286,7 @@ if __name__ == "__main__":
 
     fig2 = plt.figure()
     ax2 = fig2.add_subplot(111)
-    ax2.imshow(np.sum(V, axis=2)*dz)
+    ax2.imshow(np.sum(V, axis=2) * dz)
 
     ani = FuncAnimation(fig, update, frames=range(200), fargs=(all_electrons, time_step, ax))
 
@@ -266,10 +296,63 @@ if __name__ == "__main__":
     ax.set_zlabel('Z')
 
     # Add a legend
-    #ax.legend()
+    # ax.legend()
 
     # Add a legend
     # ax.legend()
 
     # Display the plot
     plt.show()
+
+def pp_stationary():
+    electron_array_pp = [Electron(charge=-e, keV=20, position=np.array([np.random.normal((i * 0.5e-6 + 0.25e-6)-x_range, 0.25e-6),
+                                                                       1e-6 * np.random.normal(0, 0.5),
+                                                                       1e-6 * np.random.normal(0, 0.5)]),
+                                  velocity=np.array([0, 0, 0])) for i in range(pp_electrons)]
+
+
+
+    potential_calc_size, start_range, end_range = mt.freq_analysis()
+
+
+    print("Generating Potential for phase plate ...")
+    start_ppV_time = time.time()
+    V, dz = calculate_potential(electron_array_pp, potential_calc_size, start_range, end_range)
+
+    proj_V = np.sum(V, axis=2)*dz
+    end_ppV_time = time.time()
+    print(f"Phase Plate potential calculated! (Time: {end_ppV_time-start_ppV_time}s)")
+
+    x_vals, y_vals = mt.generate_grid(mt.pots)
+
+    print("Performing Multislice ... ")
+    start_mt_time = time.time()
+    psi = mt.multislice(x_vals, y_vals, 400)
+    end_mt_time = time.time()
+    print(f"Multislice Complete! (Time: {end_mt_time-start_mt_time}s)")
+
+    kx, ky = np.meshgrid(np.fft.fftfreq(len(x_vals), d=(voxelsize * angstrom)),
+                         np.fft.fftfreq(len(y_vals), d=(voxelsize * angstrom)))
+    k_four = np.sqrt(kx ** 2 + ky ** 2)
+
+
+    H_0 = mt.objective_transfer_function(k_four, mt.wavelength, 10e-3, 200e-9, 1)
+
+    Im1 = np.fft.ifftshift(np.fft.fftshift(np.fft.fft2(psi))*np.exp(-1j*mt.sigma_e*proj_V))*H_0
+
+
+    plt.figure(1)
+    plt.imshow(np.abs(np.fft.ifft2(Im1))**2, cmap="gray_r")
+
+    plt.figure(2)
+    plt.imshow(np.abs(np.fft.ifft2(np.fft.fft2(psi)*H_0))**2, cmap="gray_r")
+
+    #plt.figure(3)
+    #plt.plot(k_vals, np.sin(mt.lens_abber_func(k_vals, mt.wavelength, 10e-3, 200e-9)))
+
+    plt.show()
+
+#Write code to run here for encapsulation (SMYAN)
+if __name__ == "__main__":
+    #tester_1()
+    pp_stationary()
