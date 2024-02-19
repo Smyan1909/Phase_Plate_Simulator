@@ -336,17 +336,22 @@ def pp_stationary():
     k_four = np.sqrt(kx ** 2 + ky ** 2)
 
 
-    H_0 = mt.objective_transfer_function(k_four, mt.wavelength, 10e-3, 200e-9, 1)
+    H_0 = mt.objective_transfer_function(k_four, mt.wavelength, 10e-3, 600e-9, 1)
 
-    Im1 = np.fft.ifftshift(np.fft.fftshift(np.fft.fft2(psi))*np.exp(-1j*mt.sigma_e*proj_V))*H_0
+    Im = np.fft.ifftshift(np.fft.fftshift(np.fft.fft2(psi))*np.exp(-1j*mt.sigma_e*proj_V))
 
 
     plt.figure(1)
-    plt.imshow(np.abs(np.fft.ifft2(Im1))**2, cmap="gray_r")
+    plt.imshow(np.abs(np.fft.ifft2(Im))**2, cmap="gray_r")
 
     plt.figure(2)
     plt.imshow(np.abs(np.fft.ifft2(np.fft.fft2(psi)*H_0))**2, cmap="gray_r")
 
+    plt.figure(3)
+    plt.imshow(np.abs(np.fft.ifft2(Im*H_0))**2, cmap="gray_r")
+
+    plt.figure(4)
+    plt.imshow(proj_V)
     #plt.figure(3)
     #plt.plot(k_vals, np.sin(mt.lens_abber_func(k_vals, mt.wavelength, 10e-3, 200e-9)))
 
