@@ -358,10 +358,10 @@ def pp_stationary():
     plt.imshow(np.sin(proj_V*mt.sigma_e), cmap="gray")
 
     plt.figure(6)
-    plt.imshow(np.sin(proj_V*mt.sigma_e + mt.lens_abber_func(k_four, mt.wavelength, 2e-3, 0)), cmap="gray")
+    plt.imshow(np.sin(proj_V*mt.sigma_e + np.fft.fftshift(mt.lens_abber_func(k_four, mt.wavelength, 2e-3, 0))), cmap="gray")
 
     plt.figure(7)
-    plt.imshow(np.sin(mt.lens_abber_func(k_four, mt.wavelength, 2e-3, 0)), cmap="gray")
+    plt.imshow(np.sin(np.fft.fftshift(mt.lens_abber_func(k_four, mt.wavelength, 2e-3, 0))), cmap="gray")
 
     plt.show()
 
