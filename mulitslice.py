@@ -146,7 +146,7 @@ def test_mult():
     psi = multislice(x, y, 400)
 
     plt.figure(1)
-    plt.imshow(np.abs(psi) ** 2, cmap="gray_r")
+    plt.imshow(np.abs(psi) ** 2, cmap="gray")
 
     kx, ky = np.meshgrid(np.fft.fftfreq(len(x), d=(voxelsize * angstrom)),
                          np.fft.fftfreq(len(y), d=(voxelsize * angstrom)))
@@ -158,7 +158,7 @@ def test_mult():
     Im = H_0 * np.fft.fft2(psi)
 
     plt.figure(2)
-    plt.imshow(np.abs(np.fft.ifft2(Im)) ** 2, cmap="gray_r")
+    plt.imshow(np.abs(np.fft.ifft2(Im)) ** 2, cmap="gray")
     plt.show()
 
 # d = k*lambda*z
@@ -174,8 +174,15 @@ def freq_analysis():
     return (kx[1]-kx[0])*wavelength*focal_length, np.fft.fftshift(kx)[0]*wavelength*focal_length, np.fft.fftshift(kx)[-1]*wavelength*focal_length
 
 
+def ideal_image():
+
+    V, dz = calculate_proj_pot(V=pots, nslice=400)
+
+    plt.imshow(np.sum(V, axis=0), cmap="gray")
+    plt.show()
+
 if __name__ == "__main__":
     test_mult()
     #print(freq_analysis())
-
+    #ideal_image()
 

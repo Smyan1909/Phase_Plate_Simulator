@@ -70,7 +70,7 @@ class Electron:
         self.position += (1/6)*(k1_x + 2*k2_x + 2*k3_x + k4_x)
 
         if self.position[0] > x_range:
-            self.position = np.array([np.random.normal(0.5e-6 + 0.25e-6, 0.25e-6), 1e-6 * np.random.normal(0, 0.5),
+            self.position = np.array([np.random.normal((0.5e-6 + 0.25e-6) - x_range, 0.25e-6), 1e-6 * np.random.normal(0, 0.5),
                              1e-6 * np.random.normal(0, 0.5)])
 
     def Euler(self, time_step, all_electrons):
@@ -282,11 +282,12 @@ def tester_1():
     # Plotting electrons from beam_electrons
     ax.scatter(x_coords_beam, y_coords_beam, z_coords_beam, c='r', marker='s', label='beam_electrons')
     """
-    V, dz = calculate_potential(electron_array_pp)
+
+    #V, dz = calculate_potential(electron_array_pp,)
 
     fig2 = plt.figure()
     ax2 = fig2.add_subplot(111)
-    ax2.imshow(np.sum(V, axis=2) * dz)
+    #ax2.imshow(np.sum(V, axis=2) * dz)
 
     ani = FuncAnimation(fig, update, frames=range(200), fargs=(all_electrons, time_step, ax))
 
@@ -336,28 +337,67 @@ def pp_stationary():
     k_four = np.sqrt(kx ** 2 + ky ** 2)
 
 
-    H_0 = mt.objective_transfer_function(k_four, mt.wavelength, 10e-3, 600e-9, 1)
+    H_0 = mt.objective_transfer_function(k_four, mt.wavelength, 2e-3, 600e-9, 1)
 
     Im = np.fft.ifftshift(np.fft.fftshift(np.fft.fft2(psi))*np.exp(-1j*mt.sigma_e*proj_V))
 
 
     plt.figure(1)
-    plt.imshow(np.abs(np.fft.ifft2(Im))**2, cmap="gray_r")
+    plt.imshow(np.abs(np.fft.ifft2(Im))**2, cmap="gray")
 
     plt.figure(2)
-    plt.imshow(np.abs(np.fft.ifft2(np.fft.fft2(psi)*H_0))**2, cmap="gray_r")
+    plt.imshow(np.abs(np.fft.ifft2(np.fft.fft2(psi)*H_0))**2, cmap="gray")
 
     plt.figure(3)
-    plt.imshow(np.abs(np.fft.ifft2(Im*H_0))**2, cmap="gray_r")
+    plt.imshow(np.abs(np.fft.ifft2(Im*H_0))**2, cmap="gray")
 
     plt.figure(4)
     plt.imshow(proj_V)
-    #plt.figure(3)
-    #plt.plot(k_vals, np.sin(mt.lens_abber_func(k_vals, mt.wavelength, 10e-3, 200e-9)))
+
+    plt.figure(5)
+    plt.imshow(np.sin(proj_V*mt.sigma_e), cmap="gray")
+
+    plt.figure(6)
+    plt.imshow(np.sin(proj_V*mt.sigma_e + mt.lens_abber_func(k_four, mt.wavelength, 2e-3, 0)), cmap="gray")
+
+    plt.figure(7)
+    plt.imshow(np.sin(mt.lens_abber_func(k_four, mt.wavelength, 2e-3, 0)), cmap="gray")
 
     plt.show()
 
+def find_Potential_CTF():
+    electron_array_pp = [
+                Electron(charge=-e, keV=20, position=np.array([np.random.normal((i * 0.5e-6 + 0.25e-6) - x_range, 0.25e-6),
+                                                       1e-6 * np.random.normal(0, 0.5),
+                                                       1e-6 * np.random.normal(0, 0.5)]),
+                 velocity=np.array([0, 0, 0])) for i in range(pp_electrons)]
+
+    potential_calc_size, start_range, end_range = mt.freq_analysis()
+
+    V, dz = calculate_potential(electron_array_pp, potential_calc_size, start_range, end_range)
+
+    proj_V = np.sum(V, axis=2)*dz
+
+    x, y = mt.generate_grid(mt.pots)
+
+    mean = 0
+    std_dev = 1
+
+    random_gaussian_values = np.random.normal(loc=mean, scale=std_dev, size=np.shape(x))
+
+    # Normalize the wavefunction
+    normalization_factor = np.sqrt(np.sum(np.abs(random_gaussian_values) ** 2))
+    normalized_wavefunction = random_gaussian_values / normalization_factor
+
+
+    CTF = np.fft.fftshift(np.fft.fft2(normalized_wavefunction))*np.exp(-1j*mt.sigma_e*proj_V)
+
+    print(CTF)
+
+    plt.imshow(np.angle(CTF), cmap="gray")
+    plt.show()
 #Write code to run here for encapsulation (SMYAN)
 if __name__ == "__main__":
     #tester_1()
     pp_stationary()
+    #find_Potential_CTF()
