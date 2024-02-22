@@ -16,22 +16,25 @@ m_relativistic = (1/np.sqrt(1-((v**2)/(c**2))))*m_e
 sigma_e = 2*np.pi*m_relativistic*e*wavelength/(h**2) #Interaction parameter
 
 
-filename = "4xcd.mrc"
+filename = "4xcd_200.mrc"
 
 #Load the file to run
 with mrcfile.open(filename) as mrc:
     pots = mrc.data
 
 angstrom = 1e-10
-voxelsize = 0.5 #Ångström
+voxelsize = 1 #Ångström
 
 
 padding_size = 50  # This is an example value, adjust as needed
 padded_pots = np.pad(pots, pad_width=padding_size, mode='constant', constant_values=0)
 def generate_grid(V):
     grid_size = np.array(V.shape[:2])  # Assuming V is 3D and grid size is based on the first two dimensions
-    x = np.arange(0, grid_size[0]//2, voxelsize) * angstrom
-    y = np.arange(0, grid_size[1]//2, voxelsize) * angstrom
+    #x = np.arange(0, grid_size[0]//2, voxelsize) * angstrom
+    #y = np.arange(0, grid_size[1]//2, voxelsize) * angstrom
+
+    x = np.arange(0, grid_size[0], voxelsize) * angstrom
+    y = np.arange(0, grid_size[1], voxelsize) * angstrom
     X, Y = np.meshgrid(x, y)
     return X, Y
 
@@ -110,7 +113,6 @@ def fresnel_propagator(x, y, dz):
 """
 def multislice(x, y, nslices):
     psi_0_unnormalized = np.ones_like(x)
-
     number_of_points = x.size  # Total number of points in the grid
     normalization_factor = 1 / np.sqrt(number_of_points)
     psi = psi_0_unnormalized * normalization_factor
@@ -170,19 +172,18 @@ def freq_analysis():
     kx = np.fft.fftfreq(len(x), d=(voxelsize*angstrom))
     ky = np.fft.fftfreq(len(y), d=(voxelsize*angstrom))
 
-
     return (kx[1]-kx[0])*wavelength*focal_length, np.fft.fftshift(kx)[0]*wavelength*focal_length, np.fft.fftshift(kx)[-1]*wavelength*focal_length
 
 
 def ideal_image():
 
-    V, dz = calculate_proj_pot(V=pots, nslice=400)
+    V, dz = calculate_proj_pot(V=pots, nslice=200)
 
     plt.imshow(np.sum(V, axis=0), cmap="gray")
     plt.show()
 
 if __name__ == "__main__":
-    test_mult()
-    #print(freq_analysis())
+    #test_mult()
+    print(freq_analysis())
     #ideal_image()
 

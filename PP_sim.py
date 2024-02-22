@@ -9,7 +9,7 @@ import mulitslice as mt
 import scipy.spatial.distance as distance
 
 
-pp_electrons = 400
+pp_electrons = 200
 beam_electrons = 0
 
 time_step = 1e-13
@@ -21,14 +21,14 @@ beam_electron_velocity = 18.7e7
 m_e = 9.1093837e-31
 e = 1.602 * 10 ** -19
 c = 299792458  # speed of light
-x_range = 0.10e-3
-y_range = 0.10e-3
-z_range = 0.10e-3
+x_range = 0.05e-3
+y_range = 0.05e-3
+z_range = 0.05e-3
 
 my0 = 1.2566370614*10**-6
 
 angstrom = 1e-10
-voxelsize = 0.5  # Ångström
+voxelsize = 1  # Ångström
 grid_size = 400  # 600x600 pixel grid for image
 
 
@@ -328,7 +328,7 @@ def pp_stationary():
 
     print("Performing Multislice ... ")
     start_mt_time = time.time()
-    psi = mt.multislice(x_vals, y_vals, 400)
+    psi = mt.multislice(x_vals, y_vals, 200)
     end_mt_time = time.time()
     print(f"Multislice Complete! (Time: {end_mt_time-start_mt_time}s)")
 
@@ -344,15 +344,24 @@ def pp_stationary():
 
     plt.figure(1)
     plt.imshow(np.abs(np.fft.ifft2(Im))**2, cmap="gray")
+    plt.xlabel("x [Å]")
+    plt.ylabel("y [Å]")
 
     plt.figure(2)
     plt.imshow(np.abs(np.fft.ifft2(np.fft.fft2(psi)*H_0))**2, cmap="gray")
+    plt.xlabel("x [Å]")
+    plt.ylabel("y [Å]")
 
     plt.figure(3)
     plt.imshow(np.abs(np.fft.ifft2(Im*H_0))**2, cmap="gray")
+    plt.xlabel("x [Å]")
+    plt.ylabel("y [Å]")
 
     plt.figure(4)
-    plt.imshow(proj_V)
+    plt.imshow(proj_V, extent=(-50, 50, -50, 50))
+    plt.colorbar()
+    plt.xlabel(f"x [$\mu m$]")
+    plt.ylabel(f"y [$\mu m$]")
 
     plt.figure(5)
     plt.imshow(np.sin(proj_V*mt.sigma_e), cmap="gray")
