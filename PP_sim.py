@@ -264,32 +264,34 @@ def tester_1():
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
-    """
+
     # Extract x, y, z coordinates from each electron's position for pp_electrons
     x_coords_pp = [electron.position[0] for electron in electron_array_pp]
     y_coords_pp = [electron.position[1] for electron in electron_array_pp]
     z_coords_pp = [electron.position[2] for electron in electron_array_pp]
 
+    """
     # Extract x, y, z coordinates from each electron's position for beam_electrons
     x_coords_beam = [electron.position[0] for electron in electron_array_beam]
     y_coords_beam = [electron.position[1] for electron in electron_array_beam]
     z_coords_beam = [electron.position[2] for electron in electron_array_beam]
     """
-    """
+
     # Plotting electrons from pp_electrons
     ax.scatter(x_coords_pp, y_coords_pp, z_coords_pp, c='b', marker='o', label='pp_electrons')
 
+    """
     # Plotting electrons from beam_electrons
     ax.scatter(x_coords_beam, y_coords_beam, z_coords_beam, c='r', marker='s', label='beam_electrons')
     """
 
     #V, dz = calculate_potential(electron_array_pp,)
 
-    fig2 = plt.figure()
-    ax2 = fig2.add_subplot(111)
+    #fig2 = plt.figure()
+    #ax2 = fig2.add_subplot(111)
     #ax2.imshow(np.sum(V, axis=2) * dz)
 
-    ani = FuncAnimation(fig, update, frames=range(200), fargs=(all_electrons, time_step, ax))
+    #ani = FuncAnimation(fig, update, frames=range(200), fargs=(all_electrons, time_step, ax))
 
     # Set axis labels
     ax.set_xlabel('X')
@@ -337,7 +339,7 @@ def pp_stationary():
     k_four = np.sqrt(kx ** 2 + ky ** 2)
 
 
-    H_0 = mt.objective_transfer_function(k_four, mt.wavelength, 2e-3, 600e-9, 1)
+    H_0 = mt.objective_transfer_function(k_four, mt.wavelength, 2e-3, 0, 1)
 
     Im = np.fft.ifftshift(np.fft.fftshift(np.fft.fft2(psi))*np.exp(-1j*mt.sigma_e*proj_V))
 
@@ -348,7 +350,7 @@ def pp_stationary():
     plt.ylabel("y [Å]")
 
     plt.figure(2)
-    plt.imshow(np.abs(np.fft.ifft2(np.fft.fft2(psi)*H_0))**2, cmap="gray")
+    plt.imshow(np.abs(np.fft.ifft2(np.fft.fft2(psi)*mt.objective_transfer_function(k_four, mt.wavelength, 2e-3, 82e-9, 1)))**2, cmap="gray")
     plt.xlabel("x [Å]")
     plt.ylabel("y [Å]")
 
@@ -370,7 +372,12 @@ def pp_stationary():
     plt.imshow(np.sin(proj_V*mt.sigma_e + np.fft.fftshift(mt.lens_abber_func(k_four, mt.wavelength, 2e-3, 0))), cmap="gray")
 
     plt.figure(7)
-    plt.imshow(np.sin(np.fft.fftshift(mt.lens_abber_func(k_four, mt.wavelength, 2e-3, 0))), cmap="gray")
+    plt.imshow(np.sin(np.fft.fftshift(mt.lens_abber_func(k_four, mt.wavelength, 2e-3, 82e-9))), cmap="gray")
+
+    plt.figure(8)
+    plt.imshow(np.abs(psi)**2, cmap="gray")
+    plt.xlabel("x [Å]")
+    plt.ylabel("y [Å]")
 
     plt.show()
 
@@ -407,6 +414,6 @@ def find_Potential_CTF():
     plt.show()
 #Write code to run here for encapsulation (SMYAN)
 if __name__ == "__main__":
-    #tester_1()
-    pp_stationary()
+    tester_1()
+    #pp_stationary()
     #find_Potential_CTF()

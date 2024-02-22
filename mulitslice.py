@@ -41,11 +41,13 @@ def generate_grid(V):
 def calculate_proj_pot(V, nslice):
     dz = len(V)//nslice
     V_z = []
+
     for i in range(nslice):
         start_z = i*dz
         end_z = start_z + dz
         if i == nslice - 1:
             end_z = len(V)
+
 
         integrated_values = (voxelsize*angstrom)*np.sum(V[start_z:end_z, :, :], axis=0)
         V_z.append(integrated_values)
@@ -141,11 +143,11 @@ def lens_abber_func(k, lambda_, Cs, delta_f):
 
 def objective_transfer_function(k, lambda_, Cs, delta_f, A_k):
     chi_k = lens_abber_func(k, lambda_, Cs, delta_f)
-    return np.exp(-1j * chi_k) * A_k
+    return np.exp(1j * chi_k) * A_k
 
 def test_mult():
     x, y = generate_grid(pots)
-    psi = multislice(x, y, 400)
+    psi = multislice(x, y, 200)
 
     plt.figure(1)
     plt.imshow(np.abs(psi) ** 2, cmap="gray")
@@ -154,13 +156,18 @@ def test_mult():
                          np.fft.fftfreq(len(y), d=(voxelsize * angstrom)))
     k = np.sqrt(kx ** 2 + ky ** 2)
 
-    H_0 = objective_transfer_function(k, wavelength, 10e-3, 200e-9, 1)
+    H_0 = objective_transfer_function(k, wavelength, 2e-3, 82e-9, 1)
     # plt.figure(2)
     # plt.imshow(np.abs(H_0), cmap="gray_r")
-    Im = H_0 * np.fft.fft2(psi)
+    Im = np.fft.fft2(psi) * H_0
 
     plt.figure(2)
     plt.imshow(np.abs(np.fft.ifft2(Im)) ** 2, cmap="gray")
+    plt.xlabel("x [Å]")
+    plt.ylabel("y [Å]")
+
+    plt.figure(3)
+    plt.imshow(np.sin(np.fft.fftshift(lens_abber_func(k, wavelength, 2e-3, 82e-9))), cmap="gray")
     plt.show()
 
 # d = k*lambda*z
@@ -183,7 +190,7 @@ def ideal_image():
     plt.show()
 
 if __name__ == "__main__":
-    #test_mult()
-    print(freq_analysis())
+    test_mult()
+    #print(freq_analysis())
     #ideal_image()
-
+    #print(np.sqrt((4/3)*2e-3*wavelength))
