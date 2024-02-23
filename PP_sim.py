@@ -7,6 +7,7 @@ from matplotlib.animation import FuncAnimation
 from mpl_toolkits.mplot3d import Axes3D
 import mulitslice as mt
 import scipy.spatial.distance as distance
+from scipy.integrate import simps
 
 
 pp_electrons = 200
@@ -241,25 +242,7 @@ def tester_1():
 
     all_electrons = electron_array_pp + electron_array_beam
 
-    """
-    print("Positions of Beam Electrons after 10 iterations:")
-    for i, pos in enumerate(beam_positions):
-        print(f"Beam Electron {i + 1}: {pos}")
 
-    beam_positions_np = np.array(beam_positions)
-    has_z_above_zero = np.any(beam_positions_np[:, 2] > 0)
-    print(has_z_above_zero)
-
-    """
-
-    """
-    for electron in all_electrons:
-            print(electron.position)
-            electron.rk4_integrator(time_step=time_step, all_electrons=all_electrons)
-            print(electron.position)
-
-    first_run   = 0
-    """
     # 3D plot of electron positions
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
@@ -346,22 +329,26 @@ def pp_stationary():
 
     plt.figure(1)
     plt.imshow(np.abs(np.fft.ifft2(Im))**2, cmap="gray")
+    plt.title("both ")
     plt.xlabel("x [Å]")
     plt.ylabel("y [Å]")
 
     plt.figure(2)
     plt.imshow(np.abs(np.fft.ifft2(np.fft.fft2(psi)*mt.objective_transfer_function(k_four, mt.wavelength, 2e-3, 82e-9, 1)))**2, cmap="gray")
+    plt.title("only lence")
     plt.xlabel("x [Å]")
     plt.ylabel("y [Å]")
 
     plt.figure(3)
     plt.imshow(np.abs(np.fft.ifft2(Im*H_0))**2, cmap="gray")
+    plt.title("Only phase plate")
     plt.xlabel("x [Å]")
     plt.ylabel("y [Å]")
 
     plt.figure(4)
     plt.imshow(proj_V, extent=(-50, 50, -50, 50))
     plt.colorbar()
+    plt.title("Potential - Phase plate")
     plt.xlabel(f"x [$\mu m$]")
     plt.ylabel(f"y [$\mu m$]")
 
@@ -369,17 +356,113 @@ def pp_stationary():
     plt.imshow(np.sin(proj_V*mt.sigma_e), cmap="gray")
 
     plt.figure(6)
+    plt.title("CTF")
     plt.imshow(np.sin(proj_V*mt.sigma_e + np.fft.fftshift(mt.lens_abber_func(k_four, mt.wavelength, 2e-3, 0))), cmap="gray")
 
     plt.figure(7)
+    plt.title("CTF")
     plt.imshow(np.sin(np.fft.fftshift(mt.lens_abber_func(k_four, mt.wavelength, 2e-3, 82e-9))), cmap="gray")
 
     plt.figure(8)
     plt.imshow(np.abs(psi)**2, cmap="gray")
+    plt.title("Inital")
     plt.xlabel("x [Å]")
     plt.ylabel("y [Å]")
 
+    plt.figure(9)
+    fft_psi = np.fft.fft2(psi)
+    plt.imshow(np.abs(fft_psi*fft_psi), cmap="gray")
+
+
+
+
+
     plt.show()
+
+
+
+
+def exitwave_pos():
+    electron_array_pp = [Electron(charge=-e, keV=20, position=np.array([np.random.normal((i * 0.5e-6 + 0.25e-6)-x_range, 0.25e-6),
+                                                                       1e-6 * np.random.normal(0, 0.5),
+                                                                       1e-6 * np.random.normal(0, 0.5)]),
+                                  velocity=np.array([0, 0, 0])) for i in range(pp_electrons)]
+
+
+
+    potential_calc_size, start_range, end_range = mt.freq_analysis()
+
+
+    print("Generating Potential for phase plate ...")
+    start_ppV_time = time.time()
+    V, dz = calculate_potential(electron_array_pp, potential_calc_size, start_range, end_range)
+
+    proj_V = np.sum(V, axis=2)*dz
+    end_ppV_time = time.time()
+    print(f"Phase Plate potential calculated! (Time: {end_ppV_time-start_ppV_time}s)")
+
+    x_vals, y_vals = mt.generate_grid(mt.pots)
+
+    print("Performing Multislice ... ")
+    start_mt_time = time.time()
+    psi = mt.multislice(x_vals, y_vals, 200)
+    end_mt_time = time.time()
+    print(f"Multislice Complete! (Time: {end_mt_time-start_mt_time}s)")
+
+    kx, ky = np.meshgrid(np.fft.fftfreq(len(x_vals), d=(voxelsize * angstrom)),
+                         np.fft.fftfreq(len(y_vals), d=(voxelsize * angstrom)))
+    k_four = np.sqrt(kx ** 2 + ky ** 2)
+
+
+    H_0 = mt.objective_transfer_function(k_four, mt.wavelength, 2e-3, 0, 1)
+
+    Im = np.fft.ifftshift(np.fft.fftshift(np.fft.fft2(psi))*np.exp(-1j*mt.sigma_e*proj_V))
+
+   # PDF = (np.abs((np.fft.fft2(psi)))**2) # probability density function
+    """
+    PDF = np.abs((psi*psi)) # probability density function
+
+    FtPDF = np.fft.fft(PDF)
+
+
+
+    plt.imshow(PDF, cmap='hot', origin='lower')
+    plt.colorbar(label='Intensity')
+    plt.title('Magnitude Squared of Fourier Transform')
+    plt.xlabel('kx')
+    plt.ylabel('ky')
+    plt.show()
+
+
+
+
+"""
+
+    #psi_magnitude = np.abs(np.fft.fft2(psi))**2
+    psi_magnitude = np.abs(np.fft.fft2(psi))
+    
+    psi_normalized = psi_magnitude / np.sum(psi_magnitude)
+
+    flattened_psi = psi_normalized.flatten()
+
+    sampled_indices = np.random.choice(flattened_psi.size, size=10000, p=flattened_psi)
+
+    sampled_positions = np.unravel_index(sampled_indices, psi_magnitude.shape)
+
+    x_positions, y_positions = sampled_positions
+
+
+    plt.figure()
+    plt.scatter(x_positions, y_positions, color='blue', alpha=0.1)
+    plt.xlabel("x [Å]")
+    plt.ylabel("y [Å]")
+    plt.grid(True)
+    plt.show()
+
+
+
+
+
 
 def find_Potential_CTF():
     electron_array_pp = [
@@ -414,6 +497,7 @@ def find_Potential_CTF():
     plt.show()
 #Write code to run here for encapsulation (SMYAN)
 if __name__ == "__main__":
-    tester_1()
+    #tester_1()
     #pp_stationary()
     #find_Potential_CTF()
+    exitwave_pos()
