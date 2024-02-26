@@ -395,7 +395,8 @@ def exitwave_pos(num_points):
 
     #psi_magnitude = np.abs(np.fft.fft2(psi))**2
     psi_magnitude = np.abs(np.fft.fftshift(np.fft.fft2(psi)))**2
-    psi_fft = np.clip(psi_magnitude, 0, np.percentile(psi_magnitude, 99))
+    #psi_fft = np.clip(psi_magnitude, 0, np.percentile(psi_magnitude, 99))
+    psi_fft = psi_magnitude
 
     #print(np.sum(psi_fft))
     psi_normalized = psi_fft / np.sum(psi_fft)

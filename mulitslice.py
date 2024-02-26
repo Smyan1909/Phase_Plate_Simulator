@@ -120,18 +120,6 @@ def multislice(x, y, nslices):
     normalization_factor = 1 / np.sqrt(number_of_points)
     psi = psi_0_unnormalized * normalization_factor
 
-    """
-    mean = 0
-    std_dev = 1
-
-    random_gaussian_values = np.random.normal(loc=mean, scale=std_dev, size=np.shape(x))
-
-    # Normalize the wavefunction
-    normalization_factor = np.sqrt(np.sum(np.abs(random_gaussian_values) ** 2))
-    psi = random_gaussian_values / normalization_factor
-    print(np.sum(np.abs(psi)**2))
-    #psi = 1
-    """
     projpot, dz = calculate_proj_pot(V=pots, nslice=nslices)
 
 
@@ -141,10 +129,13 @@ def multislice(x, y, nslices):
 
     kx, ky = np.meshgrid(np.fft.fftfreq(len(x), d=(voxelsize*angstrom)), np.fft.fftfreq(len(y), d=(voxelsize*angstrom)))
     k = np.sqrt(kx ** 2 + ky ** 2)
+    k_max = (2/3) * (0.5 / (voxelsize*angstrom))
 
+    mask = k <= k_max
 
     for i in range(nslices):
         psi = np.fft.ifft2(fresnel_propagator(k, slice_size)*np.fft.fft2(t_n[i] * psi))
+        #psi = np.fft.ifft2(np.fft.fft2(psi)*mask)
     return psi
 
 
@@ -168,7 +159,7 @@ def test_mult():
     psi = multislice(x, y, 200)
 
     plt.figure(1)
-    plt.imshow(np.abs(psi) ** 2, cmap="gray")
+    plt.imshow(np.abs(psi)**2, cmap="gray")
 
 
 
@@ -190,6 +181,13 @@ def test_mult():
 
     plt.figure(3)
     plt.imshow(np.sin(np.fft.fftshift(lens_abber_func(k, wavelength, 2e-3, 82e-9))), cmap="gray")
+
+    plt.figure(4)
+    plt.imshow(np.clip(np.abs(np.fft.fftshift(np.fft.fft2(psi)))**2, 0,np.percentile(np.abs(np.fft.fftshift(np.fft.fft2(psi)))**2,99)),cmap="gray")
+
+    plt.figure(5)
+    plt.imshow(np.log(1+1000*np.abs(np.fft.fftshift(np.fft.fft2(psi)))**2), cmap="gray")
+
     plt.show()
 
 def test_mult_with_noise_and_rescaling():
@@ -212,8 +210,7 @@ def test_mult_with_noise_and_rescaling():
     # plt.figure(2)
     # plt.imshow(np.abs(H_0), cmap="gray_r")
     Im = np.fft.fft2(psi_noisy) * H_0
-    fft_abs = np.abs(np.fft.fftshift(Im)) ** 2
-    fft_clipped = np.clip(fft_abs, 0, np.percentile(fft_abs, 99))
+
     plt.subplot(1,3,1)
     plt.imshow(np.abs(psi)**2, cmap="gray")
 
@@ -221,7 +218,7 @@ def test_mult_with_noise_and_rescaling():
     plt.imshow(np.abs(psi_noisy)**2, cmap="gray")
 
     plt.subplot(1,3,3)
-    plt.imshow(fft_clipped, cmap="gray")
+    plt.imshow(np.abs(np.fft.ifft2(Im))**2, cmap="gray")
 
     plt.show()
 
@@ -247,8 +244,8 @@ def ideal_image():
     plt.show()
 
 if __name__ == "__main__":
-    test_mult()
+    #test_mult()
     #print(freq_analysis())
     #ideal_image()
     #print(np.sqrt((4/3)*2e-3*wavelength))
-    #test_mult_with_noise_and_rescaling()
+    test_mult_with_noise_and_rescaling()
