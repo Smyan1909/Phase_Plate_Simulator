@@ -247,8 +247,8 @@ def ideal_image():
     plt.show()
 
 if __name__ == "__main__":
-    #test_mult()
+    test_mult()
     #print(freq_analysis())
     #ideal_image()
     #print(np.sqrt((4/3)*2e-3*wavelength))
-    test_mult_with_noise_and_rescaling()
+    #test_mult_with_noise_and_rescaling()

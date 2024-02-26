@@ -30,9 +30,9 @@ my0 = 1.2566370614*10**-6
 
 angstrom = 1e-10
 voxelsize = 1  # Ångström
-grid_size = 400  # 600x600 pixel grid for image
+grid_size = 200  # 200x200 pixel grid for image
 
-
+focal_length = 4e-3
 
 class Electron:
     def __init__(self, charge=None, position=None, velocity=None, acceleration=None, mass=m_e, keV=None):
@@ -349,8 +349,8 @@ def pp_stationary():
     plt.imshow(proj_V, extent=(-50, 50, -50, 50))
     plt.colorbar()
     plt.title("Potential - Phase plate")
-    plt.xlabel(f"x [$\mu m$]")
-    plt.ylabel(f"y [$\mu m$]")
+    plt.xlabel(r"x [$\mu m$]")
+    plt.ylabel(r"y [$\mu m$]")
 
     plt.figure(5)
     plt.imshow(np.sin(proj_V*mt.sigma_e), cmap="gray")
@@ -382,24 +382,7 @@ def pp_stationary():
 
 
 
-def exitwave_pos():
-    electron_array_pp = [Electron(charge=-e, keV=20, position=np.array([np.random.normal((i * 0.5e-6 + 0.25e-6)-x_range, 0.25e-6),
-                                                                       1e-6 * np.random.normal(0, 0.5),
-                                                                       1e-6 * np.random.normal(0, 0.5)]),
-                                  velocity=np.array([0, 0, 0])) for i in range(pp_electrons)]
-
-
-
-    potential_calc_size, start_range, end_range = mt.freq_analysis()
-
-
-    print("Generating Potential for phase plate ...")
-    start_ppV_time = time.time()
-    V, dz = calculate_potential(electron_array_pp, potential_calc_size, start_range, end_range)
-
-    proj_V = np.sum(V, axis=2)*dz
-    end_ppV_time = time.time()
-    print(f"Phase Plate potential calculated! (Time: {end_ppV_time-start_ppV_time}s)")
+def exitwave_pos(num_points):
 
     x_vals, y_vals = mt.generate_grid(mt.pots)
 
@@ -409,57 +392,41 @@ def exitwave_pos():
     end_mt_time = time.time()
     print(f"Multislice Complete! (Time: {end_mt_time-start_mt_time}s)")
 
-    kx, ky = np.meshgrid(np.fft.fftfreq(len(x_vals), d=(voxelsize * angstrom)),
-                         np.fft.fftfreq(len(y_vals), d=(voxelsize * angstrom)))
-    k_four = np.sqrt(kx ** 2 + ky ** 2)
-
-
-    H_0 = mt.objective_transfer_function(k_four, mt.wavelength, 2e-3, 0, 1)
-
-    Im = np.fft.ifftshift(np.fft.fftshift(np.fft.fft2(psi))*np.exp(-1j*mt.sigma_e*proj_V))
-
-   # PDF = (np.abs((np.fft.fft2(psi)))**2) # probability density function
-    """
-    PDF = np.abs((psi*psi)) # probability density function
-
-    FtPDF = np.fft.fft(PDF)
-
-
-
-    plt.imshow(PDF, cmap='hot', origin='lower')
-    plt.colorbar(label='Intensity')
-    plt.title('Magnitude Squared of Fourier Transform')
-    plt.xlabel('kx')
-    plt.ylabel('ky')
-    plt.show()
-
-
-
-
-"""
 
     #psi_magnitude = np.abs(np.fft.fft2(psi))**2
-    psi_magnitude = np.abs(np.fft.fft2(psi))
-    
-    psi_normalized = psi_magnitude / np.sum(psi_magnitude)
+    psi_magnitude = np.abs(np.fft.fftshift(np.fft.fft2(psi)))**2
+    psi_fft = np.clip(psi_magnitude, 0, np.percentile(psi_magnitude, 99))
+
+    #print(np.sum(psi_fft))
+    psi_normalized = psi_fft / np.sum(psi_fft)
+    #print(np.sum(psi_normalized))
 
     flattened_psi = psi_normalized.flatten()
 
-    sampled_indices = np.random.choice(flattened_psi.size, size=10000, p=flattened_psi)
+    sampled_indices = np.random.choice(flattened_psi.size, size=num_points, p=flattened_psi)
 
-    sampled_positions = np.unravel_index(sampled_indices, psi_magnitude.shape)
+    #sampled_positions = np.unravel_index(sampled_indices, psi_normalized.shape)
+    sampled_positions = np.unravel_index(sampled_indices, psi_normalized.shape)
+
 
     x_positions, y_positions = sampled_positions
 
+    min_physical = -50e-6
+    max_physical = 50e-6
+
+    scale = (max_physical - min_physical) / (grid_size - 1)
+
+    x_positions_rescaled = (x_positions * scale) + min_physical
+    y_positions_rescaled = (y_positions * scale) + min_physical
 
     plt.figure()
-    plt.scatter(x_positions, y_positions, color='blue', alpha=0.1)
-    plt.xlabel("x [Å]")
-    plt.ylabel("y [Å]")
+    plt.scatter(x_positions_rescaled*10**6, y_positions_rescaled*10**6, color='blue', alpha=0.1)
+    plt.xlabel(r"x [$\mu m$]")
+    plt.ylabel(r"y [$\mu m$]")
     plt.grid(True)
     plt.show()
 
-
+    return x_positions_rescaled[0], y_positions_rescaled[0]
 
 
 
@@ -513,4 +480,4 @@ if __name__ == "__main__":
     #tester_1()
     #pp_stationary()
     #find_Potential_CTF()
-    exitwave_pos()
+    print(exitwave_pos(10000))
