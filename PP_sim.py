@@ -479,8 +479,16 @@ def find_Potential_CTF():
 
     x, y = mt.generate_grid(mt.pots)
 
+    kx, ky = np.meshgrid(np.fft.fftfreq(len(x), d=(voxelsize * angstrom)),
+                         np.fft.fftfreq(len(y), d=(voxelsize * angstrom)))
+    k_four = np.sqrt(kx ** 2 + ky ** 2)
+
+    limit_freq = (2 / 3) * (0.5 / (voxelsize*angstrom))
+
+    lp_filter = np.sqrt(kx ** 2 + ky ** 2) <= limit_freq
+
     mean = 0
-    std_dev = 1
+    std_dev = 0.01 * 2.5e-5
 
     random_gaussian_values = np.random.normal(loc=mean, scale=std_dev, size=np.shape(x))
 
@@ -488,12 +496,17 @@ def find_Potential_CTF():
     normalization_factor = np.sqrt(np.sum(np.abs(random_gaussian_values) ** 2))
     normalized_wavefunction = random_gaussian_values / normalization_factor
 
+    filtered_psi_vals = np.fft.fft2(normalized_wavefunction) * lp_filter
 
-    CTF = np.fft.fftshift(np.fft.fft2(normalized_wavefunction))*np.exp(-1j*mt.sigma_e*proj_V)
+    psi_vals = filtered_psi_vals*mt.objective_transfer_function(k_four, mt.wavelength, 2e-3, 0, 1)
 
-    print(CTF)
 
-    plt.imshow(np.angle(CTF), cmap="gray")
+
+    CTF = np.fft.fftshift(psi_vals)*np.exp(-1j*mt.sigma_e*proj_V)
+
+
+
+    plt.imshow(np.abs(CTF)**2, cmap="gray")
     plt.show()
 #Write code to run here for encapsulation (SMYAN)
 if __name__ == "__main__":
