@@ -242,8 +242,7 @@ def tester_1():
 
     all_electrons = electron_array_pp + electron_array_beam
 
-
-    # 3D plot of electron positions
+    #3D plot of electron positions
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
@@ -253,20 +252,19 @@ def tester_1():
     y_coords_pp = [electron.position[1] for electron in electron_array_pp]
     z_coords_pp = [electron.position[2] for electron in electron_array_pp]
 
-    """
+
     # Extract x, y, z coordinates from each electron's position for beam_electrons
     x_coords_beam = [electron.position[0] for electron in electron_array_beam]
     y_coords_beam = [electron.position[1] for electron in electron_array_beam]
     z_coords_beam = [electron.position[2] for electron in electron_array_beam]
-    """
 
     # Plotting electrons from pp_electrons
     ax.scatter(x_coords_pp, y_coords_pp, z_coords_pp, c='b', marker='o', label='pp_electrons')
 
-    """
+
     # Plotting electrons from beam_electrons
     ax.scatter(x_coords_beam, y_coords_beam, z_coords_beam, c='r', marker='s', label='beam_electrons')
-    """
+
 
     #V, dz = calculate_potential(electron_array_pp,)
 
@@ -274,7 +272,8 @@ def tester_1():
     #ax2 = fig2.add_subplot(111)
     #ax2.imshow(np.sum(V, axis=2) * dz)
 
-    #ani = FuncAnimation(fig, update, frames=range(200), fargs=(all_electrons, time_step, ax))
+    ani = FuncAnimation(fig, update, frames=range(200), fargs=(all_electrons, time_step, ax))
+
 
     # Set axis labels
     ax.set_xlabel('X')
@@ -335,7 +334,7 @@ def pp_stationary():
 
     plt.figure(2)
     plt.imshow(np.abs(np.fft.ifft2(np.fft.fft2(psi)*mt.objective_transfer_function(k_four, mt.wavelength, 2e-3, 82e-9, 1)))**2, cmap="gray")
-    plt.title("only lence")
+    plt.title("only lens")
     plt.xlabel("x [Å]")
     plt.ylabel("y [Å]")
 
@@ -372,18 +371,13 @@ def pp_stationary():
     plt.figure(9)
     fft_psi = np.fft.fft2(psi)
     plt.imshow(np.abs(fft_psi*fft_psi), cmap="gray")
-
-
-
-
-
     plt.show()
 
 
 
 
-def exitwave_pos(num_points):
-
+def exitwave_pos(psi):
+    """
     x_vals, y_vals = mt.generate_grid(mt.pots)
 
     print("Performing Multislice ... ")
@@ -391,7 +385,7 @@ def exitwave_pos(num_points):
     psi = mt.multislice(x_vals, y_vals, 200)
     end_mt_time = time.time()
     print(f"Multislice Complete! (Time: {end_mt_time-start_mt_time}s)")
-
+    """
 
     #psi_magnitude = np.abs(np.fft.fft2(psi))**2
     psi_magnitude = np.abs(np.fft.fftshift(np.fft.fft2(psi)))**2
@@ -404,7 +398,7 @@ def exitwave_pos(num_points):
 
     flattened_psi = psi_normalized.flatten()
 
-    sampled_indices = np.random.choice(flattened_psi.size, size=num_points, p=flattened_psi)
+    sampled_indices = np.random.choice(flattened_psi.size, size=1, p=flattened_psi)
 
     #sampled_positions = np.unravel_index(sampled_indices, psi_normalized.shape)
     sampled_positions = np.unravel_index(sampled_indices, psi_normalized.shape)
@@ -419,14 +413,14 @@ def exitwave_pos(num_points):
 
     x_positions_rescaled = (x_positions * scale) + min_physical
     y_positions_rescaled = (y_positions * scale) + min_physical
-
+    """
     plt.figure()
     plt.scatter(x_positions_rescaled*10**6, y_positions_rescaled*10**6, color='blue', alpha=0.1)
     plt.xlabel(r"x [$\mu m$]")
     plt.ylabel(r"y [$\mu m$]")
     plt.grid(True)
     plt.show()
-
+    """
     return x_positions_rescaled[0], y_positions_rescaled[0]
 
 
@@ -476,9 +470,21 @@ def find_Potential_CTF():
 
     plt.imshow(np.abs(CTF)**2, cmap="gray")
     plt.show()
+
+
+def beam_electron_implementation():
+    x_vals, y_vals = mt.generate_grid(mt.pots)
+    print("Performing Multislice ... ")
+    start_mt_time = time.time()
+    psi = mt.multislice(x_vals, y_vals, 200)
+    end_mt_time = time.time()
+    print(f"Multislice Complete! (Time: {end_mt_time-start_mt_time}s)")
+
+
+
 #Write code to run here for encapsulation (SMYAN)
 if __name__ == "__main__":
-    #tester_1()
+    tester_1()
     #pp_stationary()
     #find_Potential_CTF()
-    print(exitwave_pos(10000))
+    #print(exitwave_pos(10000))
