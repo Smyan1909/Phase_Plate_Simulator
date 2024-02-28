@@ -11,14 +11,14 @@ from scipy.integrate import simps
 
 
 pp_electrons = 200
-beam_electrons = 0
+beam_electrons = 1
 
-time_step = 1e-13
+#time_step = 1e-13
 
 # constants
 k = 8.988 * 10**9
 pp_electron_velocity = 18.7e6
-beam_electron_velocity = 18.7e7
+beam_electron_velocity = 265e6
 m_e = 9.1093837e-31
 e = 1.602 * 10 ** -19
 c = 299792458  # speed of light
@@ -73,6 +73,7 @@ class Electron:
         if self.position[0] > x_range:
             self.position = np.array([np.random.normal((0.5e-6 + 0.25e-6) - x_range, 0.25e-6), 1e-6 * np.random.normal(0, 0.5),
                              1e-6 * np.random.normal(0, 0.5)])
+            self.velocity = np.array([pp_electron_velocity, 0, 0])
 
     def Euler(self, time_step, all_electrons):
 
@@ -242,29 +243,31 @@ def tester_1():
 
     all_electrons = electron_array_pp + electron_array_beam
 
-    #3D plot of electron positions
+
+    # 3D plot of electron positions
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
 
     # Extract x, y, z coordinates from each electron's position for pp_electrons
-    x_coords_pp = [electron.position[0] for electron in electron_array_pp]
+    """x_coords_pp = [electron.position[0] for electron in electron_array_pp]
     y_coords_pp = [electron.position[1] for electron in electron_array_pp]
-    z_coords_pp = [electron.position[2] for electron in electron_array_pp]
+    z_coords_pp = [electron.position[2] for electron in electron_array_pp]"""
 
-
+    """
     # Extract x, y, z coordinates from each electron's position for beam_electrons
     x_coords_beam = [electron.position[0] for electron in electron_array_beam]
     y_coords_beam = [electron.position[1] for electron in electron_array_beam]
     z_coords_beam = [electron.position[2] for electron in electron_array_beam]
+    """
 
     # Plotting electrons from pp_electrons
-    ax.scatter(x_coords_pp, y_coords_pp, z_coords_pp, c='b', marker='o', label='pp_electrons')
+    #ax.scatter(x_coords_pp, y_coords_pp, z_coords_pp, c='b', marker='o', label='pp_electrons')
 
-
+    """
     # Plotting electrons from beam_electrons
     ax.scatter(x_coords_beam, y_coords_beam, z_coords_beam, c='r', marker='s', label='beam_electrons')
-
+    """
 
     #V, dz = calculate_potential(electron_array_pp,)
 
@@ -272,8 +275,9 @@ def tester_1():
     #ax2 = fig2.add_subplot(111)
     #ax2.imshow(np.sum(V, axis=2) * dz)
 
-    ani = FuncAnimation(fig, update, frames=range(200), fargs=(all_electrons, time_step, ax))
+    dt = 1e-13
 
+    ani = FuncAnimation(fig, update, frames=range(200), fargs=(electron_array_pp, dt, ax))
 
     # Set axis labels
     ax.set_xlabel('X')
@@ -305,6 +309,7 @@ def pp_stationary():
     V, dz = calculate_potential(electron_array_pp, potential_calc_size, start_range, end_range)
 
     proj_V = np.sum(V, axis=2)*dz
+    proj_V = proj_V - np.min(proj_V)
     end_ppV_time = time.time()
     print(f"Phase Plate potential calculated! (Time: {end_ppV_time-start_ppV_time}s)")
 
@@ -328,68 +333,53 @@ def pp_stationary():
 
     plt.figure(1)
     plt.imshow(np.abs(np.fft.ifft2(Im))**2, cmap="gray")
-    plt.title("both ")
     plt.xlabel("x [Å]")
     plt.ylabel("y [Å]")
 
     plt.figure(2)
     plt.imshow(np.abs(np.fft.ifft2(np.fft.fft2(psi)*mt.objective_transfer_function(k_four, mt.wavelength, 2e-3, 82e-9, 1)))**2, cmap="gray")
-    plt.title("only lens")
     plt.xlabel("x [Å]")
     plt.ylabel("y [Å]")
 
     plt.figure(3)
     plt.imshow(np.abs(np.fft.ifft2(Im*H_0))**2, cmap="gray")
-    plt.title("Only phase plate")
     plt.xlabel("x [Å]")
     plt.ylabel("y [Å]")
 
     plt.figure(4)
     plt.imshow(proj_V, extent=(-50, 50, -50, 50))
     plt.colorbar()
-    plt.title("Potential - Phase plate")
     plt.xlabel(r"x [$\mu m$]")
     plt.ylabel(r"y [$\mu m$]")
 
     plt.figure(5)
-    plt.imshow(np.sin(proj_V*mt.sigma_e), cmap="gray")
+    plt.imshow(np.sin(-proj_V*mt.sigma_e), cmap="gray")
 
     plt.figure(6)
-    plt.title("CTF")
-    plt.imshow(np.sin(proj_V*mt.sigma_e + np.fft.fftshift(mt.lens_abber_func(k_four, mt.wavelength, 2e-3, 0))), cmap="gray")
+    plt.imshow(np.sin(-proj_V*mt.sigma_e + np.fft.fftshift(mt.lens_abber_func(k_four, mt.wavelength, 2e-3, 0))), cmap="gray")
 
     plt.figure(7)
-    plt.title("CTF")
     plt.imshow(np.sin(np.fft.fftshift(mt.lens_abber_func(k_four, mt.wavelength, 2e-3, 82e-9))), cmap="gray")
 
     plt.figure(8)
     plt.imshow(np.abs(psi)**2, cmap="gray")
-    plt.title("Inital")
     plt.xlabel("x [Å]")
     plt.ylabel("y [Å]")
 
-    plt.figure(9)
-    fft_psi = np.fft.fft2(psi)
-    plt.imshow(np.abs(fft_psi*fft_psi), cmap="gray")
+
+
     plt.show()
 
 
 
 
-def exitwave_pos(psi):
-    """
-    x_vals, y_vals = mt.generate_grid(mt.pots)
+def exitwave_pos(num_points, psi):
 
-    print("Performing Multislice ... ")
-    start_mt_time = time.time()
-    psi = mt.multislice(x_vals, y_vals, 200)
-    end_mt_time = time.time()
-    print(f"Multislice Complete! (Time: {end_mt_time-start_mt_time}s)")
-    """
 
     #psi_magnitude = np.abs(np.fft.fft2(psi))**2
     psi_magnitude = np.abs(np.fft.fftshift(np.fft.fft2(psi)))**2
     #psi_fft = np.clip(psi_magnitude, 0, np.percentile(psi_magnitude, 99))
+
     psi_fft = psi_magnitude
 
     #print(np.sum(psi_fft))
@@ -398,7 +388,7 @@ def exitwave_pos(psi):
 
     flattened_psi = psi_normalized.flatten()
 
-    sampled_indices = np.random.choice(flattened_psi.size, size=1, p=flattened_psi)
+    sampled_indices = np.random.choice(flattened_psi.size, size=num_points, p=flattened_psi)
 
     #sampled_positions = np.unravel_index(sampled_indices, psi_normalized.shape)
     sampled_positions = np.unravel_index(sampled_indices, psi_normalized.shape)
@@ -406,13 +396,16 @@ def exitwave_pos(psi):
 
     x_positions, y_positions = sampled_positions
 
-    min_physical = -50e-6
-    max_physical = 50e-6
+    dkx, min_physical, max_physical = mt.freq_analysis()
+
+    #min_physical = -50e-6
+    #max_physical = 50e-6
 
     scale = (max_physical - min_physical) / (grid_size - 1)
 
     x_positions_rescaled = (x_positions * scale) + min_physical
     y_positions_rescaled = (y_positions * scale) + min_physical
+
     """
     plt.figure()
     plt.scatter(x_positions_rescaled*10**6, y_positions_rescaled*10**6, color='blue', alpha=0.1)
@@ -421,6 +414,7 @@ def exitwave_pos(psi):
     plt.grid(True)
     plt.show()
     """
+
     return x_positions_rescaled[0], y_positions_rescaled[0]
 
 
@@ -473,6 +467,12 @@ def find_Potential_CTF():
 
 
 def beam_electron_implementation():
+    electron_array_pp = [
+        Electron(charge=-e, keV=20, position=np.array([np.random.normal((i * 0.5e-6 + 0.25e-6) - x_range, 0.25e-6),
+                                                       1e-6 * np.random.normal(0, 0.5),
+                                                       1e-6 * np.random.normal(0, 0.5)]),
+                 velocity=np.array([pp_electron_velocity, 0, 0])) for i in range(pp_electrons)]
+
     x_vals, y_vals = mt.generate_grid(mt.pots)
     print("Performing Multislice ... ")
     start_mt_time = time.time()
@@ -480,11 +480,77 @@ def beam_electron_implementation():
     end_mt_time = time.time()
     print(f"Multislice Complete! (Time: {end_mt_time-start_mt_time}s)")
 
+    start_pos_x, start_pos_y = exitwave_pos(1, psi)
+
+    beam_electron = [Electron(charge=-e, position=np.array([start_pos_x, start_pos_y, 1e-3]),
+                             velocity=np.array([0, 0, -beam_electron_velocity]))]
+
+    all_electrons = electron_array_pp + beam_electron
+
+
+    #fig = plt.figure()
+    #ax = fig.add_subplot(111, projection='3d')
+
+    dt = 7.8124e-14
+
+    potential_calc_size, start_range, end_range = mt.freq_analysis()
+
+    print("Generating Potential for phase plate ...")
+    start_ppV_time = time.time()
+    start_V, dz = calculate_potential(elec_array=electron_array_pp, step_size=potential_calc_size, start_range=start_range, stop_range=end_range)
+    proj_V_start = np.sum(start_V, axis=2)*dz
+    proj_V_start = proj_V_start - np.min(proj_V_start)
+    end_ppV_time = time.time()
+    print(f"Phase Plate potential calculated! (Time: {end_ppV_time - start_ppV_time}s)")
+
+
+    start_prop_time = time.time()
+    print("Starting Beam propagation ... ")
+    while beam_electron[0].position[2] > -1e-3:
+        for electrons in all_electrons:
+            electrons.rk4_integrator(dt, all_electrons)
+        print("Beam Electron Pos: ", beam_electron[0].position)
+    end_prop_time = time.time()
+    print(f"Propagation Complete! (Time: {end_prop_time-start_prop_time}s)")
+
+    print("Generating Potential for phase plate second time ...")
+    start_ppV_time = time.time()
+    end_V, dz = calculate_potential(elec_array=electron_array_pp, step_size=potential_calc_size,
+                                      start_range=start_range, stop_range=end_range)
+    proj_V_end = np.sum(end_V, axis=2) * dz
+    proj_V_end = proj_V_end - np.min(proj_V_end)
+    end_ppV_time = time.time()
+    print(f"Phase Plate potential calculated! (Time: {end_ppV_time - start_ppV_time}s)")
+
+    plt.figure(1)
+    plt.imshow(proj_V_start, extent=(-50, 50, -50, 50))
+    plt.colorbar()
+    plt.xlabel(r"x [$\mu m$]")
+    plt.ylabel(r"y [$\mu m$]")
+
+    plt.figure(2)
+    plt.imshow(proj_V_end, extent=(-50, 50, -50, 50))
+    plt.colorbar()
+    plt.xlabel(r"x [$\mu m$]")
+    plt.ylabel(r"y [$\mu m$]")
+
+    """
+    x_coords_pp = [electron.position[0] for electron in electron_array_pp]
+    y_coords_pp = [electron.position[1] for electron in electron_array_pp]
+    z_coords_pp = [electron.position[2] for electron in electron_array_pp]
+
+    ax.scatter(x_coords_pp, y_coords_pp, z_coords_pp, c='b', marker='o')
+    """
+
+
+    plt.show()
+
 
 
 #Write code to run here for encapsulation (SMYAN)
 if __name__ == "__main__":
-    tester_1()
-    #pp_stationary()
+    #tester_1()
+    pp_stationary()
     #find_Potential_CTF()
-    #print(exitwave_pos(10000))
+    #beam_electron_implementation()
+
