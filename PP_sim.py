@@ -24,7 +24,7 @@ e = 1.602 * 10 ** -19
 c = 299792458  # speed of light
 x_range = 0.05e-3
 y_range = 0.05e-3
-z_range = 0.05e-3
+z_range = 2e-3
 
 my0 = 1.2566370614*10**-6
 
@@ -147,7 +147,8 @@ def calculate_potential(elec_array, step_size, start_range, stop_range):
 
     x_ = np.arange(start_range, stop_range+step_size, step_size)
     y_ = np.arange(start_range, stop_range+step_size, step_size)
-    z_ = np.arange(start_range, stop_range+step_size, step_size)
+    #z_ = np.arange(start_range, stop_range+step_size, step_size)
+    z_ = np.linspace(-z_range, z_range, 400)
     x, y, z = np.meshgrid(x_, y_, z_, sparse=True)
 
     Vp = np.zeros((len(x_), len(y_), len(z_)))
@@ -165,6 +166,25 @@ def calculate_potential(elec_array, step_size, start_range, stop_range):
 
     return Vp, dz
 
+
+def calculate_potential_slice(elec_array, step_size, start_range, stop_range, z_val):
+
+    x_ = np.arange(start_range, stop_range + step_size, step_size)
+    y_ = np.arange(start_range, stop_range + step_size, step_size)
+
+    x, y = np.meshgrid(x_, y_, sparse=True)
+
+    V_slice = np.zeros((len(x_), len(y_)))
+
+    for electron in elec_array:
+
+        elec_pos = np.array(electron.position)
+
+        dist = np.sqrt((x - elec_pos[0])**2 + (y-elec_pos[1])**2 + (z_val - elec_pos[2])**2)
+
+        V_slice += k*(electron.charge/dist)
+
+    return V_slice
 def calculate_potential_fast(elec_array, step_size):
     # Generate grid points
     x_ = np.linspace(-x_range, x_range, 100)
@@ -474,6 +494,10 @@ def beam_electron_implementation():
                  velocity=np.array([pp_electron_velocity, 0, 0])) for i in range(pp_electrons)]
 
     x_vals, y_vals = mt.generate_grid(mt.pots)
+
+    kx, ky = np.meshgrid(np.fft.fftfreq(len(x_vals), d=(voxelsize * angstrom)),
+                         np.fft.fftfreq(len(y_vals), d=(voxelsize * angstrom)))
+    k_four = np.sqrt(kx ** 2 + ky ** 2)
     print("Performing Multislice ... ")
     start_mt_time = time.time()
     psi = mt.multislice(x_vals, y_vals, 200)
@@ -503,15 +527,22 @@ def beam_electron_implementation():
     end_ppV_time = time.time()
     print(f"Phase Plate potential calculated! (Time: {end_ppV_time - start_ppV_time}s)")
 
-
+    V_arr = []
     start_prop_time = time.time()
     print("Starting Beam propagation ... ")
     while beam_electron[0].position[2] > -1e-3:
+        dz_old = beam_electron[0].position[2]
         for electrons in all_electrons:
             electrons.rk4_integrator(dt, all_electrons)
+        V_arr.append(calculate_potential_slice(elec_array=electron_array_pp, step_size=potential_calc_size, start_range=start_range,
+                                                   stop_range=end_range, z_val=beam_electron[0].position[2])*np.abs(beam_electron[0].position[2]-dz_old))
+
         print("Beam Electron Pos: ", beam_electron[0].position)
     end_prop_time = time.time()
     print(f"Propagation Complete! (Time: {end_prop_time-start_prop_time}s)")
+
+    V_proj_slice_approx = np.sum(V_arr, axis=0)
+    V_proj_slice_approx -= np.min(V_proj_slice_approx)
 
     print("Generating Potential for phase plate second time ...")
     start_ppV_time = time.time()
@@ -523,24 +554,41 @@ def beam_electron_implementation():
     print(f"Phase Plate potential calculated! (Time: {end_ppV_time - start_ppV_time}s)")
 
     plt.figure(1)
+
+    plt.subplot(1, 3, 1)
     plt.imshow(proj_V_start, extent=(-50, 50, -50, 50))
     plt.colorbar()
     plt.xlabel(r"x [$\mu m$]")
     plt.ylabel(r"y [$\mu m$]")
+    plt.title("Initial Projected Potential")
 
-    plt.figure(2)
+    plt.subplot(1, 3, 2)
     plt.imshow(proj_V_end, extent=(-50, 50, -50, 50))
     plt.colorbar()
     plt.xlabel(r"x [$\mu m$]")
     plt.ylabel(r"y [$\mu m$]")
+    plt.title("End Projected Potential")
 
-    """
-    x_coords_pp = [electron.position[0] for electron in electron_array_pp]
-    y_coords_pp = [electron.position[1] for electron in electron_array_pp]
-    z_coords_pp = [electron.position[2] for electron in electron_array_pp]
+    plt.subplot(1, 3, 3)
+    plt.imshow(V_proj_slice_approx, extent=(-50, 50, -50, 50))
+    plt.colorbar()
+    plt.xlabel(r"x [$\mu m$]")
+    plt.ylabel(r"y [$\mu m$]")
+    plt.title("Slice Approximated Projected Potential")
 
-    ax.scatter(x_coords_pp, y_coords_pp, z_coords_pp, c='b', marker='o')
-    """
+    plt.figure(2)
+
+    plt.subplot(1, 3, 1)
+    plt.imshow(np.sin(-proj_V_start*mt.sigma_e + np.fft.fftshift(mt.lens_abber_func(k_four, mt.wavelength, 2e-3, 0))), cmap="gray")
+    plt.title("Start CTF")
+
+    plt.subplot(1, 3, 2)
+    plt.imshow(np.sin(-proj_V_end*mt.sigma_e + np.fft.fftshift(mt.lens_abber_func(k_four, mt.wavelength, 2e-3, 0))), cmap="gray")
+    plt.title("End CTF")
+
+    plt.subplot(1, 3, 3)
+    plt.imshow(np.sin(-V_proj_slice_approx*mt.sigma_e + np.fft.fftshift(mt.lens_abber_func(k_four, mt.wavelength, 2e-3, 0))), cmap="gray")
+    plt.title("Slice Approximated CTF")
 
 
     plt.show()
@@ -550,7 +598,7 @@ def beam_electron_implementation():
 #Write code to run here for encapsulation (SMYAN)
 if __name__ == "__main__":
     #tester_1()
-    pp_stationary()
+    #pp_stationary()
     #find_Potential_CTF()
-    #beam_electron_implementation()
+    beam_electron_implementation()
 
