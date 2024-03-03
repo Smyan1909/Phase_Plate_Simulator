@@ -350,6 +350,13 @@ def pp_stationary():
 
     Im = np.fft.ifftshift(np.fft.fftshift(np.fft.fft2(psi))*np.exp(-1j*mt.sigma_e*proj_V))
 
+    ideal_image = mt.ideal_image()
+
+    frc1, r_vals1 = fourier_ring_correlation(np.abs(np.fft.ifft2(Im*H_0))**2, ideal_image)
+
+    frc2, r_vals2 = fourier_ring_correlation(np.abs(np.fft.ifft2(np.fft.fft2(psi)*mt.objective_transfer_function(k_four, mt.wavelength, 2e-3, 82e-9, 1)))**2, ideal_image)
+
+
 
     plt.figure(1)
     plt.imshow(np.abs(np.fft.ifft2(Im))**2, cmap="gray")
@@ -385,6 +392,15 @@ def pp_stationary():
     plt.imshow(np.abs(psi)**2, cmap="gray")
     plt.xlabel("x [Å]")
     plt.ylabel("y [Å]")
+
+    plt.figure(9)
+    plt.subplot(1, 2, 1)
+    plt.plot(r_vals1, frc1)
+    plt.title("FRC for PP")
+
+    plt.subplot(1,2,2)
+    plt.plot(r_vals2, frc2)
+    plt.title("FRC for Scherzer")
 
 
 
@@ -594,11 +610,45 @@ def beam_electron_implementation():
     plt.show()
 
 
+def fourier_ring_correlation(image1, image2):
+    # Check if both images have the same shape
+    if image1.shape != image2.shape:
+        raise ValueError("Both images must have the same dimensions.")
 
+    # Compute the 2D Fourier Transform of both images
+    F1 = np.fft.fftshift(np.fft.fft2(image1))
+    F2 = np.fft.fftshift(np.fft.fft2(image2))
+
+    # Compute the conjugate product of the two Fourier Transforms
+    conj_product = F1 * np.conj(F2)
+
+    # Initialize variables to store the sums of the Fourier components and the conjugate product
+    num = np.zeros(image1.shape[0] // 2)
+    den1 = np.zeros_like(num)
+    den2 = np.zeros_like(num)
+
+    # Calculate the center of the Fourier space
+    center = np.array(image1.shape) // 2
+    for x in range(image1.shape[0]):
+        for y in range(image1.shape[1]):
+            # Calculate the distance of each point from the center
+            r = np.sqrt((x - center[0]) ** 2 + (y - center[1]) ** 2).astype(int)
+            if r < image1.shape[0] // 2:
+                # Sum the conjugate product and the squares of the magnitudes for the denominator
+                num[r] += conj_product[x, y]
+                den1[r] += np.abs(F1[x, y]) ** 2
+                den2[r] += np.abs(F2[x, y]) ** 2
+
+
+    # Calculate the Fourier Ring Correlation for each ring
+    frc = np.abs(num) / np.sqrt(den1 * den2)
+    r_vec = np.arange(image1.shape[0] // 2)
+
+    return frc, r_vec
 #Write code to run here for encapsulation (SMYAN)
 if __name__ == "__main__":
     #tester_1()
-    #pp_stationary()
+    pp_stationary()
     #find_Potential_CTF()
-    beam_electron_implementation()
+    #beam_electron_implementation()
 

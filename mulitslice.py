@@ -145,7 +145,7 @@ def lens_abber_func(k, lambda_, Cs, delta_f):
 
 def objective_transfer_function(k, lambda_, Cs, delta_f, A_k):
     chi_k = lens_abber_func(k, lambda_, Cs, delta_f)
-    return np.exp(1j * chi_k) * A_k
+    return np.exp(-1j * chi_k) * A_k
 
 
 def normalize_and_rescale(data):
@@ -238,14 +238,15 @@ def ideal_image():
 
     V, dz = calculate_proj_pot(V=pots, nslice=200)
 
-    plt.imshow(np.sum(V, axis=0), cmap="gray")
-    plt.xlabel("x [Å]")
-    plt.ylabel("y [Å]")
-    plt.show()
+    #plt.imshow(np.sum(V, axis=0), cmap="gray")
+    #plt.xlabel("x [Å]")
+    #plt.ylabel("y [Å]")
+    #plt.show()
 
+    return np.sum(V, axis=0)
 if __name__ == "__main__":
-    test_mult()
+    #test_mult()
     #print(freq_analysis())
-    #ideal_image()
+    ideal_image()
     #print(np.sqrt((4/3)*2e-3*wavelength))
     #test_mult_with_noise_and_rescaling()
