@@ -356,7 +356,7 @@ def pp_stationary():
 
     frc2, r_vals2 = fourier_ring_correlation(np.abs(np.fft.ifft2(np.fft.fft2(psi)*mt.objective_transfer_function(k_four, mt.wavelength, 2e-3, 82e-9, 1)))**2, ideal_image)
 
-
+    radius_vals = np.linspace(0, 4.95, num=len(frc1))
 
     plt.figure(1)
     plt.imshow(np.abs(np.fft.ifft2(Im))**2, cmap="gray")
@@ -395,12 +395,16 @@ def pp_stationary():
 
     plt.figure(9)
     plt.subplot(1, 2, 1)
-    plt.plot(r_vals1, frc1)
+    plt.plot(radius_vals, frc1)
     plt.title("FRC for PP")
+    plt.xlabel(r"Spatial Frequency [$nm^{-1}$]")
+    plt.ylabel("Correlation")
 
     plt.subplot(1,2,2)
-    plt.plot(r_vals2, frc2)
+    plt.plot(radius_vals, frc2)
     plt.title("FRC for Scherzer")
+    plt.xlabel(r"Spatial Frequency [$nm^{-1}$]")
+    plt.ylabel("Correlation")
 
 
 

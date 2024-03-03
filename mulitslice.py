@@ -145,7 +145,7 @@ def lens_abber_func(k, lambda_, Cs, delta_f):
 
 def objective_transfer_function(k, lambda_, Cs, delta_f, A_k):
     chi_k = lens_abber_func(k, lambda_, Cs, delta_f)
-    return np.exp(-1j * chi_k) * A_k
+    return np.exp(1j * chi_k) * A_k
 
 
 def normalize_and_rescale(data):
@@ -231,6 +231,7 @@ def freq_analysis():
     kx = np.fft.fftfreq(len(x), d=(voxelsize*angstrom))
     ky = np.fft.fftfreq(len(y), d=(voxelsize*angstrom))
 
+
     return (kx[1]-kx[0])*wavelength*focal_length, np.fft.fftshift(kx)[0]*wavelength*focal_length, np.fft.fftshift(kx)[-1]*wavelength*focal_length
 
 
@@ -246,7 +247,7 @@ def ideal_image():
     return np.sum(V, axis=0)
 if __name__ == "__main__":
     #test_mult()
-    #print(freq_analysis())
-    ideal_image()
+    print(freq_analysis())
+    #ideal_image()
     #print(np.sqrt((4/3)*2e-3*wavelength))
     #test_mult_with_noise_and_rescaling()
