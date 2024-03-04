@@ -358,6 +358,9 @@ def pp_stationary():
 
     radius_vals = np.linspace(0, 4.95, num=len(frc1))
 
+    print("PSNR pp+lens = ", PSNR(ideal_image, np.abs(np.fft.ifft2(Im*H_0))**2))
+    print("PSNR Scherzer = ", PSNR(ideal_image, np.abs(np.fft.ifft2(np.fft.fft2(psi)*mt.objective_transfer_function(k_four, mt.wavelength, 2e-3, 82e-9, 1)))**2))
+
     plt.figure(1)
     plt.imshow(np.abs(np.fft.ifft2(Im))**2, cmap="gray")
     plt.xlabel("x [Å]")
@@ -613,6 +616,30 @@ def beam_electron_implementation():
 
     plt.show()
 
+
+def MSE(ideal, image1):
+
+    gray_scaled_ideal = mt.normalize_and_rescale(ideal)
+    gray_scaled_im = mt.normalize_and_rescale(image1)
+
+    squared_error = 0
+
+    for i in range(image1.shape[0]):
+        for j in range(image1.shape[1]):
+            squared_error += (gray_scaled_ideal[i, j] - gray_scaled_im[i, j])**2
+
+    mean_squared_error = (1/(image1.shape[0]*image1.shape[1]))*squared_error
+
+    return mean_squared_error
+
+def PSNR(ideal, image1):
+
+
+    MAX_I = 255
+
+    peak_signal_to_noise_ratio = 10 * np.log10((MAX_I**2)/MSE(ideal, image1))
+
+    return peak_signal_to_noise_ratio
 
 def fourier_ring_correlation(image1, image2):
     # Check if both images have the same shape
