@@ -8,10 +8,11 @@ from mpl_toolkits.mplot3d import Axes3D
 import mulitslice as mt
 import scipy.spatial.distance as distance
 from scipy.integrate import simps
+import csv
 
 
 pp_electrons = 200
-beam_electrons = 1
+beam_electrons = 20
 
 #time_step = 1e-13
 
@@ -532,91 +533,163 @@ def beam_electron_implementation():
     beam_electron = [Electron(charge=-e, position=np.array([start_pos_x, start_pos_y, 1e-3]),
                              velocity=np.array([0, 0, -beam_electron_velocity]))]
 
+    H_0 = mt.objective_transfer_function(k_four, mt.wavelength, 2e-3, 0, 1)
+
+    psi_pp_interact = np.fft.fftshift(np.fft.fft2(psi)*H_0)
+
     all_electrons = electron_array_pp + beam_electron
 
+    image_array_slicePot = []
+    image_array_endPot = []
 
-    #fig = plt.figure()
-    #ax = fig.add_subplot(111, projection='3d')
+    ideal_image = mt.ideal_image()
 
-    dt = 7.8124e-14
+    for i in range(beam_electrons):
 
-    potential_calc_size, start_range, end_range = mt.freq_analysis()
 
-    print("Generating Potential for phase plate ...")
-    start_ppV_time = time.time()
-    start_V, dz = calculate_potential(elec_array=electron_array_pp, step_size=potential_calc_size, start_range=start_range, stop_range=end_range)
-    proj_V_start = np.sum(start_V, axis=2)*dz
-    proj_V_start = proj_V_start - np.min(proj_V_start)
-    end_ppV_time = time.time()
-    print(f"Phase Plate potential calculated! (Time: {end_ppV_time - start_ppV_time}s)")
+        dt = 7.8124e-14
 
-    V_arr = []
-    start_prop_time = time.time()
-    print("Starting Beam propagation ... ")
-    while beam_electron[0].position[2] > -1e-3:
-        dz_old = beam_electron[0].position[2]
-        for electrons in all_electrons:
-            electrons.rk4_integrator(dt, all_electrons)
-        V_arr.append(calculate_potential_slice(elec_array=electron_array_pp, step_size=potential_calc_size, start_range=start_range,
-                                                   stop_range=end_range, z_val=beam_electron[0].position[2])*np.abs(beam_electron[0].position[2]-dz_old))
+        new_start_x, new_start_y = exitwave_pos(1, psi)
 
-        print("Beam Electron Pos: ", beam_electron[0].position)
-    end_prop_time = time.time()
-    print(f"Propagation Complete! (Time: {end_prop_time-start_prop_time}s)")
+        potential_calc_size, start_range, end_range = mt.freq_analysis()
 
-    V_proj_slice_approx = np.sum(V_arr, axis=0)
-    V_proj_slice_approx -= np.min(V_proj_slice_approx)
+        """print("Generating Potential for phase plate ...")
+        start_ppV_time = time.time()
+        start_V, dz = calculate_potential(elec_array=electron_array_pp, step_size=potential_calc_size, start_range=start_range, stop_range=end_range)
+        proj_V_start = np.sum(start_V, axis=2)*dz
+        proj_V_start = proj_V_start - np.min(proj_V_start)
+        end_ppV_time = time.time()
+        print(f"Phase Plate potential calculated! (Time: {end_ppV_time - start_ppV_time}s)")"""
 
-    print("Generating Potential for phase plate second time ...")
-    start_ppV_time = time.time()
-    end_V, dz = calculate_potential(elec_array=electron_array_pp, step_size=potential_calc_size,
-                                      start_range=start_range, stop_range=end_range)
-    proj_V_end = np.sum(end_V, axis=2) * dz
-    proj_V_end = proj_V_end - np.min(proj_V_end)
-    end_ppV_time = time.time()
-    print(f"Phase Plate potential calculated! (Time: {end_ppV_time - start_ppV_time}s)")
+        V_arr = []
+        start_prop_time = time.time()
+        print("Starting Beam propagation ... ")
+        while beam_electron[0].position[2] > -1e-3:
+            dz_old = beam_electron[0].position[2]
+            for electrons in all_electrons:
+                electrons.rk4_integrator(dt, all_electrons)
+            V_arr.append(calculate_potential_slice(elec_array=electron_array_pp, step_size=potential_calc_size, start_range=start_range,
+                                                       stop_range=end_range, z_val=beam_electron[0].position[2])*np.abs(beam_electron[0].position[2]-dz_old))
+
+            print("Beam Electron Pos: ", beam_electron[0].position)
+        end_prop_time = time.time()
+        print(f"Propagation Complete! (Time: {end_prop_time-start_prop_time}s)")
+
+        beam_electron[0].position = np.array([new_start_x, new_start_y, 1e-3])
+        beam_electron[0].velocity = np.array([0, 0, -beam_electron_velocity])
+
+        V_proj_slice_approx = np.sum(V_arr, axis=0)
+        V_proj_slice_approx -= np.min(V_proj_slice_approx)
+
+        print("Generating Potential for phase plate second time ...")
+        start_ppV_time = time.time()
+        end_V, dz = calculate_potential(elec_array=electron_array_pp, step_size=potential_calc_size,
+                                          start_range=start_range, stop_range=end_range)
+        proj_V_end = np.sum(end_V, axis=2) * dz
+        proj_V_end = proj_V_end - np.min(proj_V_end)
+        end_ppV_time = time.time()
+        print(f"Phase Plate potential calculated! (Time: {end_ppV_time - start_ppV_time}s)")
+
+        image_slicePot = np.abs(np.fft.ifft2(np.fft.ifftshift(psi_pp_interact*np.exp(-1j*mt.sigma_e*V_proj_slice_approx))))**2
+
+        image_endPot = np.abs(np.fft.ifft2(np.fft.ifftshift(psi_pp_interact*np.exp(-1j*mt.sigma_e*proj_V_end))))**2
+
+        image_array_slicePot.append(image_slicePot)
+        image_array_endPot.append(image_endPot)
+
+        plt.figure(1, layout='constrained')
+
+        #plt.subplot(1, 3, 1)
+        #plt.imshow(proj_V_start, extent=(-50, 50, -50, 50))
+        #plt.colorbar()
+        #plt.xlabel(r"x [$\mu m$]")
+        #plt.ylabel(r"y [$\mu m$]")
+        #plt.title("Initial Projected Potential")
+
+        plt.subplot(1, 2, 1)
+        plt.imshow(proj_V_end, extent=(-50, 50, -50, 50))
+        plt.colorbar()
+        plt.xlabel(r"x [$\mu m$]")
+        plt.ylabel(r"y [$\mu m$]")
+
+
+
+        plt.subplot(1, 2, 2)
+        plt.imshow(V_proj_slice_approx, extent=(-50, 50, -50, 50))
+        plt.colorbar()
+        plt.xlabel(r"x [$\mu m$]")
+        plt.ylabel(r"y [$\mu m$]")
+
+        plt.savefig(f"Proj_Pot_calcs_iteration_{i}.png")
+
+        plt.figure(2, layout='constrained')
+
+        plt.subplot(1, 2, 1)
+        plt.imshow(np.sin(-proj_V_end*mt.sigma_e + np.fft.fftshift(mt.lens_abber_func(k_four, mt.wavelength, 2e-3, 0))), cmap="gray")
+
+
+        plt.subplot(1, 2, 2)
+        plt.imshow(np.sin(-V_proj_slice_approx*mt.sigma_e + np.fft.fftshift(mt.lens_abber_func(k_four, mt.wavelength, 2e-3, 0))), cmap="gray")
+
+
+        plt.savefig(f"CTF_calculations_iteration_{i}.png")
+
+        plt.close("all")
+
+        peak_signal_to_noise_ratio1 = PSNR(ideal_image, image_slicePot)
+        peak_signal_to_noise_ratio2 = PSNR(ideal_image, image_endPot)
+        peak_signal_to_noise_ratio3 = PSNR(ideal_image, np.abs(np.fft.ifft2(np.fft.fft2(psi)*mt.objective_transfer_function(k_four, mt.wavelength, 2e-3, 82e-9, 1)))**2)
+        params = [peak_signal_to_noise_ratio1, peak_signal_to_noise_ratio2, peak_signal_to_noise_ratio3]
+
+        with open("PSNR.csv", "a", newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow(params)
+
+        print(f"iteration {i} complete!")
+
+    final_image_slicePot = np.sum(image_array_slicePot, axis=0)
+    final_image_endPot = np.sum(image_array_endPot, axis=0)
+
+    final_image_slicePot = final_image_slicePot/np.sum(final_image_slicePot)
+    final_image_endPot = final_image_endPot/np.sum(final_image_endPot)
+
+    frc1, r_vals1 = fourier_ring_correlation(final_image_slicePot, ideal_image)
+    frc2, r_vals2 = fourier_ring_correlation(final_image_endPot, ideal_image)
+    frc3, r_vals3 = fourier_ring_correlation(np.abs(np.fft.ifft2(np.fft.fft2(psi)*mt.objective_transfer_function(k_four, mt.wavelength, 2e-3, 82e-9, 1)))**2, ideal_image)
+    radius_vals = np.linspace(0, 4.95, num=len(frc1))
 
     plt.figure(1)
-
-    plt.subplot(1, 3, 1)
-    plt.imshow(proj_V_start, extent=(-50, 50, -50, 50))
-    plt.colorbar()
-    plt.xlabel(r"x [$\mu m$]")
-    plt.ylabel(r"y [$\mu m$]")
-    plt.title("Initial Projected Potential")
-
-    plt.subplot(1, 3, 2)
-    plt.imshow(proj_V_end, extent=(-50, 50, -50, 50))
-    plt.colorbar()
-    plt.xlabel(r"x [$\mu m$]")
-    plt.ylabel(r"y [$\mu m$]")
-    plt.title("End Projected Potential")
-
-    plt.subplot(1, 3, 3)
-    plt.imshow(V_proj_slice_approx, extent=(-50, 50, -50, 50))
-    plt.colorbar()
-    plt.xlabel(r"x [$\mu m$]")
-    plt.ylabel(r"y [$\mu m$]")
-    plt.title("Slice Approximated Projected Potential")
+    plt.imshow(final_image_slicePot, cmap="gray")
+    plt.xlabel("x [Å]")
+    plt.ylabel("y [Å]")
+    plt.title("Final Image Slice Approximation")
 
     plt.figure(2)
+    plt.imshow(final_image_endPot, cmap="gray")
+    plt.xlabel("x [Å]")
+    plt.ylabel("y [Å]")
+    plt.title("Final Image Full Potential")
 
+    plt.figure(3)
     plt.subplot(1, 3, 1)
-    plt.imshow(np.sin(-proj_V_start*mt.sigma_e + np.fft.fftshift(mt.lens_abber_func(k_four, mt.wavelength, 2e-3, 0))), cmap="gray")
-    plt.title("Start CTF")
+    plt.plot(radius_vals, frc1)
+    plt.xlabel(r"Spatial Frequency [$nm^{-1}$]")
+    plt.ylabel("Correlation")
+    plt.title("Slice Approximation Summed Image FRC")
 
     plt.subplot(1, 3, 2)
-    plt.imshow(np.sin(-proj_V_end*mt.sigma_e + np.fft.fftshift(mt.lens_abber_func(k_four, mt.wavelength, 2e-3, 0))), cmap="gray")
-    plt.title("End CTF")
+    plt.plot(radius_vals, frc2)
+    plt.xlabel(r"Spatial Frequency [$nm^{-1}$]")
+    plt.ylabel("Correlation")
+    plt.title("Full Potential Summed Image FRC")
 
     plt.subplot(1, 3, 3)
-    plt.imshow(np.sin(-V_proj_slice_approx*mt.sigma_e + np.fft.fftshift(mt.lens_abber_func(k_four, mt.wavelength, 2e-3, 0))), cmap="gray")
-    plt.title("Slice Approximated CTF")
-
+    plt.plot(radius_vals, frc3)
+    plt.xlabel(r"Spatial Frequency [$nm^{-1}$]")
+    plt.ylabel("Correlation")
+    plt.title("Scherzer Defocus Image FRC")
 
     plt.show()
-
-
 def MSE(ideal, image1):
 
     gray_scaled_ideal = mt.normalize_and_rescale(ideal)
@@ -679,7 +752,7 @@ def fourier_ring_correlation(image1, image2):
 #Write code to run here for encapsulation (SMYAN)
 if __name__ == "__main__":
     #tester_1()
-    pp_stationary()
+    #pp_stationary()
     #find_Potential_CTF()
-    #beam_electron_implementation()
+    beam_electron_implementation()
 
