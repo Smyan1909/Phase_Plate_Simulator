@@ -560,12 +560,23 @@ def beam_electron_implementation():
         proj_V_start = proj_V_start - np.min(proj_V_start)
         end_ppV_time = time.time()
         print(f"Phase Plate potential calculated! (Time: {end_ppV_time - start_ppV_time}s)")"""
-
+        first_time_step_change = False
+        second_time_step_change = False
+        third_time_step_change = False
         V_arr = []
         start_prop_time = time.time()
         print("Starting Beam propagation ... ")
         while beam_electron[0].position[2] > -1e-3:
             dz_old = beam_electron[0].position[2]
+            if (30e-6 > beam_electron[0].position[2] > 10e-6) and not first_time_step_change:
+                dt /= 4
+                first_time_step_change = True
+            if (10e-6 > beam_electron[0].position[2] > -1e-6) and not second_time_step_change:
+                dt /= 100
+                second_time_step_change = True
+            if (beam_electron[0].position[2] < -1e-6) and not third_time_step_change:
+                dt *= 400
+                third_time_step_change = True
             for electrons in all_electrons:
                 electrons.rk4_integrator(dt, all_electrons)
             V_arr.append(calculate_potential_slice(elec_array=electron_array_pp, step_size=potential_calc_size, start_range=start_range,
@@ -620,7 +631,7 @@ def beam_electron_implementation():
         plt.xlabel(r"x [$\mu m$]")
         plt.ylabel(r"y [$\mu m$]")
 
-        plt.savefig(f"Proj_Pot_calcs_iteration_{i}.png")
+        plt.savefig(f"Proj_Pot_calcs_adaptive_timestep_iteration_{i}.png")
 
         plt.figure(2, layout='constrained')
 
@@ -632,7 +643,7 @@ def beam_electron_implementation():
         plt.imshow(np.sin(-V_proj_slice_approx*mt.sigma_e + np.fft.fftshift(mt.lens_abber_func(k_four, mt.wavelength, 2e-3, 0))), cmap="gray")
 
 
-        plt.savefig(f"CTF_calculations_iteration_{i}.png")
+        plt.savefig(f"CTF_calculations_adaptive_timestep_iteration_{i}.png")
 
         plt.close("all")
 
@@ -641,7 +652,7 @@ def beam_electron_implementation():
         peak_signal_to_noise_ratio3 = PSNR(ideal_image, np.abs(np.fft.ifft2(np.fft.fft2(psi)*mt.objective_transfer_function(k_four, mt.wavelength, 2e-3, 82e-9, 1)))**2)
         params = [peak_signal_to_noise_ratio1, peak_signal_to_noise_ratio2, peak_signal_to_noise_ratio3]
 
-        with open("PSNR.csv", "a", newline='') as file:
+        with open("PSNR_second_calc.csv", "a", newline='') as file:
             writer = csv.writer(file)
             writer.writerow(params)
 
