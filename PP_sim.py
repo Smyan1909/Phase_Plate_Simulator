@@ -410,7 +410,22 @@ def pp_stationary():
     plt.xlabel(r"Spatial Frequency [$nm^{-1}$]")
     plt.ylabel("Correlation")
 
+    plt.figure(10)
+    plt.subplot(1, 2, 1)
+    plt.plot(radius_vals[:-1], np.sin(-proj_V*mt.sigma_e + np.fft.fftshift(
+        mt.lens_abber_func(k_four, mt.wavelength, 2e-3, 0)
+    ))[100:199, 100])
+    plt.title(r"CTF of PP+Objective Lens with $D=0nm$")
+    plt.xlabel(r"Spatial Frequency [$nm^{-1}$]")
+    plt.ylabel(r"CTF($k$)")
 
+    plt.subplot(1, 2, 2)
+    plt.plot(radius_vals[:-1], np.sin(np.fft.fftshift(
+        mt.lens_abber_func(k_four, mt.wavelength, 2e-3, 82e-9)
+    ))[100:199, 100])
+    plt.title(r"CTF of Objective Lens with Scherzer Defocus")
+    plt.xlabel(r"Spatial Frequency [$nm^{-1}$]")
+    plt.ylabel(r"CTF($k$)")
 
     plt.show()
 
@@ -763,7 +778,7 @@ def fourier_ring_correlation(image1, image2):
 #Write code to run here for encapsulation (SMYAN)
 if __name__ == "__main__":
     #tester_1()
-    #pp_stationary()
+    pp_stationary()
     #find_Potential_CTF()
-    beam_electron_implementation()
+    #beam_electron_implementation()
 
