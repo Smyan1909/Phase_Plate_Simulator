@@ -15,7 +15,8 @@ m_relativistic = (1/np.sqrt(1-((v**2)/(c**2))))*m_e
 
 sigma_e = 2*np.pi*m_relativistic*e*wavelength/(h**2) #Interaction parameter
 
-
+#Sets the file for the simulation
+#When performing multiple simulations this variable value should be changed dynamically
 filename = "4xcd_200.mrc"
 
 #Load the file to run
@@ -23,22 +24,36 @@ with mrcfile.open(filename) as mrc:
     pots = mrc.data
 
 angstrom = 1e-10
+
+#Sets the voxelsize or resolution of the simulation (This myst match the voxelsize of the .mrc files)
 voxelsize = 1 #Ångström
 
 
 padding_size = 50  # This is an example value, adjust as needed
 padded_pots = np.pad(pots, pad_width=padding_size, mode='constant', constant_values=0)
+
 def generate_grid(V):
+    """
+    Generates the grid for the multislice simulation
+    :param V: The potential map of the molecule to be imaged
+    :return: The meshgrid X, Y for the simulation
+    """
     grid_size = np.array(V.shape[:2])  # Assuming V is 3D and grid size is based on the first two dimensions
     #x = np.arange(0, grid_size[0]//2, voxelsize) * angstrom
     #y = np.arange(0, grid_size[1]//2, voxelsize) * angstrom
 
-    x = np.arange(0, grid_size[0], voxelsize) * angstrom
-    y = np.arange(0, grid_size[1], voxelsize) * angstrom
+    x = np.arange(0, int(grid_size[0]*voxelsize), voxelsize) * angstrom
+    y = np.arange(0, int(grid_size[1]*voxelsize), voxelsize) * angstrom
     X, Y = np.meshgrid(x, y)
     return X, Y
 
 def calculate_proj_pot(V, nslice):
+    """
+    Calculates the slice-wise projected potential of the molecule
+    :param V: The potential map of the molecule to be imaged
+    :param nslice: The number of slices to be used in the multislice simulation
+    :return: The projected potential in Vm for each slice in an array and the slice thickness
+    """
     dz = len(V)//nslice
     V_z = []
 
@@ -54,8 +69,12 @@ def calculate_proj_pot(V, nslice):
 
     return V_z, dz
 
-
 def calculate_transmission_function(proj_pot):
+    """
+    Calculates the tranmission function used in the multislice simulation for each slice
+    :param proj_pot: The projected potential for one slice of the specimen
+    :return: The bandwidth limited transmission function for the slice
+    """
     t_n = []
     for pot_slice in proj_pot:
         # Calculate transmission function
@@ -74,7 +93,6 @@ def calculate_transmission_function(proj_pot):
         k = np.sqrt(kx ** 2 + ky ** 2)
 
         # Determine the frequency limit (2/3 of Nyquist frequency)
-        #limit_freq = (2 / 3) * np.max(k)
         limit_freq = (2/3) * (0.5 / dx)
 
         # Apply bandwidth limiting
@@ -93,6 +111,12 @@ def calculate_transmission_function(proj_pot):
 
 
 def fresnel_propagator(k, dz):
+    """
+    Calculates the fresnel propagator for one slice
+    :param k: The spatial frequency coordinates for the multislice grid
+    :param dz: The slice thickness
+    :return: The propagator function for one slice in reciprocal space
+    """
     # Apply the Fresnel propagation formula
     p = np.exp(-1j * np.pi * wavelength * (k ** 2) * dz)
 
@@ -100,21 +124,15 @@ def fresnel_propagator(k, dz):
 
 
 
-"""
-def fresnel_propagator(kx, ky, dz):
-    p = np.exp(-1j*np.pi*wavelength*(kx**2)*dz)*np.exp(-1j*np.pi*wavelength*(ky**2)*dz)
-    return p
-"""
-
-
-"""
-def fresnel_propagator(x, y, dz):
-    p = np.exp(1j*np.pi/(wavelength*dz) * (x**2 + y**2))
-    return p
-    
-"""
 def multislice(x, y, nslices):
 
+    """
+    Performs the multislice algorithm to acquire an exit wave
+    :param x: The x-coordinates for the grid (as a meshgrid)
+    :param y: The y-coordinates for the grid (as a meshgrid)
+    :param nslices: The number of slices for the multislice simulation
+    :return: The exit wave from the specimen
+    """
     psi_0_unnormalized = np.ones_like(x)
     number_of_points = x.size  # Total number of points in the grid
     normalization_factor = 1 / np.sqrt(number_of_points)
@@ -129,26 +147,45 @@ def multislice(x, y, nslices):
 
     kx, ky = np.meshgrid(np.fft.fftfreq(len(x), d=(voxelsize*angstrom)), np.fft.fftfreq(len(y), d=(voxelsize*angstrom)))
     k = np.sqrt(kx ** 2 + ky ** 2)
-    k_max = (2/3) * (0.5 / (voxelsize*angstrom))
 
-    mask = k <= k_max
 
     for i in range(nslices):
         psi = np.fft.ifft2(fresnel_propagator(k, slice_size)*np.fft.fft2(t_n[i] * psi))
-        #psi = np.fft.ifft2(np.fft.fft2(psi)*mask)
     return psi
 
 
 def lens_abber_func(k, lambda_, Cs, delta_f):
+    """
+    Calculates the lens abberation function chi(k)
+    :param k: Spatial frequencies
+    :param lambda_: Electron wavelength
+    :param Cs: Spherical abberation coefficient
+    :param delta_f: Defocus value
+    :return: lens abberation function
+    """
     return np.pi * lambda_ * (k ** 2) * (0.5 * Cs * lambda_ ** 2 * k ** 2 - delta_f)
 
 
-def objective_transfer_function(k, lambda_, Cs, delta_f, A_k):
+def objective_transfer_function(k, lambda_, Cs, delta_f, A_k=1):
+    """
+    Calculates the objective lens transfer function for the weak phase approximation
+    :param k: Spatial frequencies
+    :param lambda_: Electron wavelength
+    :param Cs: Spherical abberation coefficient
+    :param delta_f: Defocus value
+    :param A_k: Apperture coefficient (Use as 1)
+    :return: The objective lens transfer function for the weak phase approximation
+    """
     chi_k = lens_abber_func(k, lambda_, Cs, delta_f)
     return np.exp(1j * chi_k) * A_k
 
 
 def normalize_and_rescale(data):
+    """
+    Normalizes and rescales an image to grayscale
+    :param data: Image to be rescaled
+    :return: grayscaled normalized image
+    """
     # Normalize data to [0, 1]
     normalized_data = (data - np.min(data)) / (np.max(data) - np.min(data))
     # Rescale to [0, 255] for grayscale
@@ -190,17 +227,29 @@ def test_mult():
 
     plt.show()
 
+def generate_noise(wavefunction):
+    """
+    Generates noise in an arbitrary wavefunction. Is to be used to simulate noise from the specimen.
+    :param wavefunction: An arbitrary 2D wavefunction
+    :return: wavefunction with complex-valued gaussian noise
+    """
+    noise_mean = 0
+    noise_std_real = 0.01 * np.mean(np.imag(wavefunction))
+    noise_std_imag = 0.01 * np.mean(np.real(wavefunction))
+
+    noise_real = np.random.normal(loc=noise_mean, scale=noise_std_real, size=wavefunction.shape)
+    noise_imag = np.random.normal(loc=noise_mean, scale=noise_std_imag, size=wavefunction.shape)
+
+    complex_noise = noise_real + 1j * noise_imag
+
+    noisy_wavefunction = wavefunction + complex_noise
+
+    return noisy_wavefunction
 def test_mult_with_noise_and_rescaling():
     x, y = generate_grid(pots)
     psi = multislice(x, y, 200)
 
-    noise_mean = 0
-    noise_std_real = 0.01 * np.mean(np.imag(psi))  # Standard deviation for the real part
-    noise_std_imag = 0.01 * np.mean(np.real(psi))  # Standard deviation for the imaginary part
-    noise_real = np.random.normal(loc=noise_mean, scale=noise_std_real, size=psi.shape)
-    noise_imag = np.random.normal(loc=noise_mean, scale=noise_std_imag, size=psi.shape)
-    complex_noise = noise_real + 1j * noise_imag
-    psi_noisy = psi + complex_noise
+    psi_noisy = generate_noise(psi)
 
     kx, ky = np.meshgrid(np.fft.fftfreq(len(x), d=(voxelsize * angstrom)),
                          np.fft.fftfreq(len(y), d=(voxelsize * angstrom)))
@@ -247,7 +296,7 @@ def ideal_image():
     return np.sum(V, axis=0)
 if __name__ == "__main__":
     #test_mult()
-    print(freq_analysis())
+    #print(freq_analysis())
     #ideal_image()
     #print(np.sqrt((4/3)*2e-3*wavelength))
-    #test_mult_with_noise_and_rescaling()
+    test_mult_with_noise_and_rescaling()
