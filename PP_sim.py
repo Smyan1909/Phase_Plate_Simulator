@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import time
 from matplotlib.animation import FuncAnimation
 from mpl_toolkits.mplot3d import Axes3D
-import mulitslice as mt
+import multislice as mt
 import scipy.spatial.distance as distance
 from scipy.integrate import simps
 import csv
