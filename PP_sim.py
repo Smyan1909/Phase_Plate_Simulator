@@ -9,6 +9,7 @@ import multislice as mt
 import scipy.spatial.distance as distance
 from scipy.integrate import simps
 import csv
+import os
 
 
 pp_electrons = 200
@@ -31,7 +32,7 @@ my0 = 1.2566370614*10**-6
 
 angstrom = 1e-10
 voxelsize = 1  # Ångström
-grid_size = 200  # 200x200 pixel grid for image
+# grid_size = 256  # 256x256 pixel grid for image
 
 focal_length = 4e-3
 
@@ -239,17 +240,6 @@ beam_electron_index = 0
 frames_passed = 0
 beam_positions = []
 
-"""
-def simulate_beam_electrons():
-    global beam_electron_index, frames_passed, beam_positions
-
-    while beam_electron_index < len(electron_array_beam):
-        electron = electron_array_beam[beam_electron_index]
-        for _ in range(10):  # Perform 10 iterations of RK4 integration
-            electron.rk4_integrator(all_electrons=electron_array_pp + [electron], time_step=time_step)
-        beam_positions.append(electron.position)
-        beam_electron_index += 1
-"""
 
 def tester_1():
     # Create an array of Electron objects with random initial positions
@@ -460,6 +450,8 @@ def exitwave_pos(num_points, psi):
     #min_physical = -50e-6
     #max_physical = 50e-6
 
+    grid_size = len(psi[0])
+
     scale = (max_physical - min_physical) / (grid_size - 1)
 
     x_positions_rescaled = (x_positions * scale) + min_physical
@@ -525,6 +517,147 @@ def find_Potential_CTF():
     plt.show()
 
 
+def create_Potential_Maps():
+    """
+    Creates and saves potential maps to .txt files
+    :return: Does not return anything
+    """
+
+    electron_array_pp = [
+        Electron(charge=-e, keV=20, position=np.array([np.random.normal((i * 0.5e-6 + 0.25e-6) - x_range, 0.25e-6),
+                                                       1e-6 * np.random.normal(0, 0.5),
+                                                       1e-6 * np.random.normal(0, 0.5)]),
+                 velocity=np.array([pp_electron_velocity, 0, 0])) for i in range(pp_electrons)]
+
+    x_vals, y_vals = mt.generate_grid(mt.pots)
+
+    print("Performing Multislice ... ")
+    start_mt_time = time.time()
+    psi = mt.multislice(x_vals, y_vals, 256)
+    end_mt_time = time.time()
+    print(f"Multislice Complete! (Time: {end_mt_time - start_mt_time}s)")
+
+    start_pos_x, start_pos_y = exitwave_pos(1, psi)
+
+    beam_electron = [Electron(charge=-e, position=np.array([start_pos_x, start_pos_y, 1e-3]),
+                              velocity=np.array([0, 0, -beam_electron_velocity]))]
+
+    all_electrons = electron_array_pp + beam_electron
+
+    for i in range(beam_electrons):
+
+        print(f"Starting simulation for beam electron {i}")
+
+        dt = 7.8124e-14
+
+        new_start_x, new_start_y = exitwave_pos(1, psi)
+
+        potential_calc_size, start_range, end_range = mt.freq_analysis()
+
+        first_time_step_change = False
+        second_time_step_change = False
+        third_time_step_change = False
+        V_arr = []
+        z_arr = [beam_electron[0].position[2]]
+        start_prop_time = time.time()
+        print("Starting Beam propagation ... ")
+        while beam_electron[0].position[2] > -1e-3:
+            if (30e-6 > beam_electron[0].position[2] > 10e-6) and not first_time_step_change:
+                dt /= 4
+                first_time_step_change = True
+            if (10e-6 > beam_electron[0].position[2] > -1e-6) and not second_time_step_change:
+                dt /= 100
+                second_time_step_change = True
+            if (beam_electron[0].position[2] < -1e-6) and not third_time_step_change:
+                dt *= 400
+                third_time_step_change = True
+            for electrons in all_electrons:
+                electrons.rk4_integrator(dt, all_electrons)
+            V_arr.append(calculate_potential_slice(elec_array=electron_array_pp, step_size=potential_calc_size,
+                                                   start_range=start_range,
+                                                   stop_range=end_range, z_val=beam_electron[0].position[2]))
+            z_arr.append(beam_electron[0].position[2])
+
+            print("Beam Electron Pos: ", beam_electron[0].position)
+        end_prop_time = time.time()
+        print(f"Propagation Complete! (Time: {end_prop_time - start_prop_time}s)")
+
+        print("Saving Potential Map and position to files")
+        V_arr_3D = np.stack(V_arr)
+        PP_pot_path = f"PP_Pot_map_{i}.txt"
+        z_pos_path = f"z_pos_{i}.txt"
+
+        if os.path.exists(PP_pot_path):
+            with open(PP_pot_path, 'w') as file:
+
+                file.write(f'# Array shape {V_arr_3D.shape}\n')
+
+                for V_slice in V_arr_3D:
+                    np.savetxt(file, V_slice, fmt='%e')
+
+                    file.write('# New Slice\n')
+        else:
+            with open(PP_pot_path, 'x') as file:
+
+                file.write(f'# Array shape {V_arr_3D.shape}\n')
+
+                for V_slice in V_arr_3D:
+                    np.savetxt(file, V_slice, fmt='%e')
+
+                    file.write('# New Slice\n')
+
+        if os.path.exists(z_pos_path):
+            with open(z_pos_path, 'w') as file:
+                np.savetxt(file, np.array(z_arr), fmt='%e')
+        else:
+            with open(z_pos_path, 'x') as file:
+                np.savetxt(file, np.array(z_arr), fmt='%e')
+
+        beam_electron[0].position = np.array([new_start_x, new_start_y, 1e-3])
+        beam_electron[0].velocity = np.array([0, 0, -beam_electron_velocity])
+
+def read_Potential_Map(pot_map_file, z_pos_file):
+    """
+    Used to read potential maps in .txt files
+    :param pot_map_file: Path to potential map file
+    :param z_pos_file: Path to z pos file
+    :return: Arrays containing the potential map and the difference in consecutive z-positions as a (len(z), 1, 1) array
+    """
+    pot_arr_flat = np.loadtxt(pot_map_file)
+    z_pos_arr = np.loadtxt(z_pos_file)
+
+    pot_arr = np.reshape(pot_arr_flat, (len(z_pos_arr)-1, 256, 256))
+    z_pos_arr = [np.abs(z_pos_arr[i + 1] - z_pos_arr[i]) for i in range(len(z_pos_arr) - 1)]
+    return pot_arr, z_pos_arr
+
+def test_Read_Potential():
+
+    pp_pot1, z_pos_arr = read_Potential_Map("PP_Pot_map_0.txt", "z_pos_0.txt")
+    pp_pot2, z_pos_arr2 = read_Potential_Map("PP_Pot_map_1.txt", "z_pos_1.txt")
+
+    #proj_pot_slice1 = pp_pot1 * np.reshape(z_pos_arr, (len(z_pos_arr), 1, 1))
+    #proj_pot_slice2 = pp_pot2 * np.reshape(z_pos_arr2, (len(z_pos_arr), 1, 1))
+
+    #proj_pot_slice2 = np.rot90(proj_pot_slice2, axes=(1, 2))
+
+    tot_pot = np.vstack((pp_pot1, np.rot90(pp_pot2, axes=(1, 2))))
+    z_pos = np.array([z_pos_arr, z_pos_arr2])
+
+    proj_pot = np.sum(tot_pot * np.reshape(z_pos, (2*len(z_pos_arr), 1, 1)), axis=0)
+
+    proj_pot -= np.min(proj_pot)
+
+    plt.figure(1)
+    plt.imshow(proj_pot)
+    x_vals, y_vals = mt.generate_grid(mt.pots)
+
+    kx, ky = np.meshgrid(np.fft.fftfreq(len(x_vals), d=(voxelsize * angstrom)),
+                         np.fft.fftfreq(len(y_vals), d=(voxelsize * angstrom)))
+    k_four = np.sqrt(kx ** 2 + ky ** 2)
+
+    plt.figure(2)
+    plt.imshow(np.sin(np.sin(-proj_pot*mt.sigma_e + np.fft.fftshift(mt.lens_abber_func(k_four, mt.wavelength, 2e-3, 0)))), cmap="gray")
+    plt.show()
 def beam_electron_implementation():
     electron_array_pp = [
         Electron(charge=-e, keV=20, position=np.array([np.random.normal((i * 0.5e-6 + 0.25e-6) - x_range, 0.25e-6),
@@ -561,6 +694,7 @@ def beam_electron_implementation():
 
     for i in range(beam_electrons):
 
+        print(f"Starting simulation for beam electron {i}")
 
         dt = 7.8124e-14
 
@@ -568,13 +702,6 @@ def beam_electron_implementation():
 
         potential_calc_size, start_range, end_range = mt.freq_analysis()
 
-        """print("Generating Potential for phase plate ...")
-        start_ppV_time = time.time()
-        start_V, dz = calculate_potential(elec_array=electron_array_pp, step_size=potential_calc_size, start_range=start_range, stop_range=end_range)
-        proj_V_start = np.sum(start_V, axis=2)*dz
-        proj_V_start = proj_V_start - np.min(proj_V_start)
-        end_ppV_time = time.time()
-        print(f"Phase Plate potential calculated! (Time: {end_ppV_time - start_ppV_time}s)")"""
         first_time_step_change = False
         second_time_step_change = False
         third_time_step_change = False
@@ -778,7 +905,8 @@ def fourier_ring_correlation(image1, image2):
 #Write code to run here for encapsulation (SMYAN)
 if __name__ == "__main__":
     #tester_1()
-    pp_stationary()
+    #pp_stationary()
     #find_Potential_CTF()
     #beam_electron_implementation()
-
+    #create_Potential_Maps()
+    test_Read_Potential()

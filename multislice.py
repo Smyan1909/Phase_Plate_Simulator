@@ -17,7 +17,7 @@ sigma_e = 2*np.pi*m_relativistic*e*wavelength/(h**2) #Interaction parameter
 
 #Sets the file for the simulation
 #When performing multiple simulations this variable value should be changed dynamically
-filename = "4xcd_200.mrc"
+filename = "4xcd.mrc"
 
 #Load the file to run
 with mrcfile.open(filename) as mrc:
@@ -272,14 +272,17 @@ def test_mult_with_noise_and_rescaling():
     plt.show()
 
 # d = k*lambda*z
-def freq_analysis():
+def freq_analysis(focal_length=4e-3):
+    """
+    Creates the map in reciprocal space for the phase plate
+    :return: The pixel spacing in reciprocal space, the leftmost and rightmost x-coordinates in reciprocal space.
+    """
     x, y = generate_grid(pots)
 
-    focal_length = 4e-3 #m
+    #focal_length = 4e-3 #m
 
     kx = np.fft.fftfreq(len(x), d=(voxelsize*angstrom))
     ky = np.fft.fftfreq(len(y), d=(voxelsize*angstrom))
-
 
     return (kx[1]-kx[0])*wavelength*focal_length, np.fft.fftshift(kx)[0]*wavelength*focal_length, np.fft.fftshift(kx)[-1]*wavelength*focal_length
 
