@@ -472,50 +472,31 @@ def exitwave_pos(num_points, psi):
 
 
 def find_Potential_CTF():
-    electron_array_pp = [
-                Electron(charge=-e, keV=20, position=np.array([np.random.normal((i * 0.5e-6 + 0.25e-6) - x_range, 0.25e-6),
-                                                       1e-6 * np.random.normal(0, 0.5),
-                                                       1e-6 * np.random.normal(0, 0.5)]),
-                 velocity=np.array([0, 0, 0])) for i in range(pp_electrons)]
+    x_vals, y_vals = mt.generate_grid(mt.pots)
+    psi = mt.multislice(x_vals, y_vals, 256)
 
-    potential_calc_size, start_range, end_range = mt.freq_analysis()
+    kx, ky = np.meshgrid(np.fft.fftfreq(len(x_vals), d=(voxelsize * angstrom)),
+                         np.fft.fftfreq(len(y_vals), d=(voxelsize * angstrom)))
+    k = np.sqrt(kx ** 2 + ky ** 2)
 
-    V, dz = calculate_potential(electron_array_pp, potential_calc_size, start_range, end_range)
+    H_0 = mt.objective_transfer_function(k, mt.wavelength, 2e-3, 600e-9, 1)
 
-    proj_V = np.sum(V, axis=2)*dz
+    psi_with_noise = mt.generate_noise(psi)
 
-    x, y = mt.generate_grid(mt.pots)
-
-    kx, ky = np.meshgrid(np.fft.fftfreq(len(x), d=(voxelsize * angstrom)),
-                         np.fft.fftfreq(len(y), d=(voxelsize * angstrom)))
-    k_four = np.sqrt(kx ** 2 + ky ** 2)
-
-    limit_freq = (2 / 3) * (0.5 / (voxelsize*angstrom))
-
-    lp_filter = np.sqrt(kx ** 2 + ky ** 2) <= limit_freq
-
-    mean = 0
-    std_dev = 0.01 * 2.5e-5
-
-    random_gaussian_values = np.random.normal(loc=mean, scale=std_dev, size=np.shape(x))
-
-    # Normalize the wavefunction
-    normalization_factor = np.sqrt(np.sum(np.abs(random_gaussian_values) ** 2))
-    normalized_wavefunction = random_gaussian_values / normalization_factor
-
-    filtered_psi_vals = np.fft.fft2(normalized_wavefunction) * lp_filter
-
-    psi_vals = filtered_psi_vals*mt.objective_transfer_function(k_four, mt.wavelength, 2e-3, 0, 1)
+    psi_magnitude = np.fft.fftshift(np.fft.fft2(psi_with_noise)*H_0)
 
 
 
-    CTF = np.fft.fftshift(psi_vals)*np.exp(-1j*mt.sigma_e*proj_V)
+    image = np.abs(np.fft.ifft2(np.fft.ifftshift(psi_magnitude)))**2
 
+    psi_fft = np.clip(np.abs(np.fft.fft2(image))**2, 0, np.percentile(np.abs(np.fft.fft2(image))**2, 99))
 
+    plt.figure(1)
+    plt.imshow(image, cmap="gray")
 
-    plt.imshow(np.abs(CTF)**2, cmap="gray")
+    plt.figure(2)
+    plt.imshow(np.fft.fftshift(psi_fft), cmap="gray")
     plt.show()
-
 
 def create_Potential_Maps():
     """
@@ -656,7 +637,7 @@ def test_Read_Potential():
     k_four = np.sqrt(kx ** 2 + ky ** 2)
 
     plt.figure(2)
-    plt.imshow(np.sin(np.sin(-proj_pot*mt.sigma_e + np.fft.fftshift(mt.lens_abber_func(k_four, mt.wavelength, 2e-3, 0)))), cmap="gray")
+    plt.imshow(np.sin(-proj_pot*mt.sigma_e + np.fft.fftshift(mt.lens_abber_func(k_four, mt.wavelength, 2e-3, 0))), cmap="gray")
     plt.show()
 def beam_electron_implementation():
     electron_array_pp = [

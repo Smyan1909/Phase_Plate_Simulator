@@ -234,8 +234,8 @@ def generate_noise(wavefunction):
     :return: wavefunction with complex-valued gaussian noise
     """
     noise_mean = 0
-    noise_std_real = 0.01 * np.mean(np.imag(wavefunction))
-    noise_std_imag = 0.01 * np.mean(np.real(wavefunction))
+    noise_std_imag = 0.1 * np.mean(np.imag(wavefunction))
+    noise_std_real = 0.1 * np.mean(np.real(wavefunction))
 
     noise_real = np.random.normal(loc=noise_mean, scale=noise_std_real, size=wavefunction.shape)
     noise_imag = np.random.normal(loc=noise_mean, scale=noise_std_imag, size=wavefunction.shape)
