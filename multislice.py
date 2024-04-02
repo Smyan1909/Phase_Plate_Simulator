@@ -17,7 +17,7 @@ sigma_e = 2*np.pi*m_relativistic*e*wavelength/(h**2) #Interaction parameter
 
 #Sets the file for the simulation
 #When performing multiple simulations this variable value should be changed dynamically
-filename = "4xcd_200.mrc"
+filename = "4xcd.mrc"
 
 #Load the file to run
 with mrcfile.open(filename) as mrc:
