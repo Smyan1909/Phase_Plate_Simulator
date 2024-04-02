@@ -895,7 +895,7 @@ def fourier_ring_correlation(image1, image2):
     return frc, r_vec
 
 def CTF_envelope_function():
-    sigma = 60.0
+    sigma = 50.0
     size = 200
     filter = np.zeros((size, size))
     center = size // 2
@@ -905,29 +905,18 @@ def CTF_envelope_function():
     filter /= np.sum(filter)  # Normalize filter to ensure sum is 1
 
     x_vals, y_vals = mt.generate_grid(mt.pots)
-    psi = mt.multislice(x_vals, y_vals, size)
 
     kx, ky = np.meshgrid(np.fft.fftfreq(len(x_vals), d=(voxelsize * angstrom)),
                          np.fft.fftfreq(len(y_vals), d=(voxelsize * angstrom)))
     k = np.sqrt(kx ** 2 + ky ** 2)
 
-    H_0 = mt.objective_transfer_function(k, mt.wavelength, 2e-3, 0, 1)
-
-    psi_magnitude = np.fft.fftshift(np.fft.fft2(psi) * H_0)
-    psi_magnitude_filtered = np.fft.fftshift(np.fft.fft2(psi) * H_0) * filter
-    image1 = np.abs(np.fft.ifft2(np.fft.ifftshift(psi_magnitude)))**2
-    image2 = np.abs(np.fft.ifft2(np.fft.ifftshift(psi_magnitude_filtered))) ** 2
-    psi_fft1 = np.clip(np.abs(np.fft.fft2(image1)), 0, np.percentile(np.abs(np.fft.fft2(image1)), 99))
-    psi_fft2 = np.clip(np.abs(np.fft.fft2(image2)), 0, np.percentile(np.abs(np.fft.fft2(image2)), 99))
-
+    k_vals = np.fft.fftfreq(len(x_vals), d=(voxelsize * angstrom))
+    vals = np.sin(np.fft.fftshift(mt.lens_abber_func(k, mt.wavelength, 2e-3, 82e-9)))
     plt.figure(1)
-    plt.imshow(np.fft.fftshift(psi_fft1), cmap="gray")
+    plt.plot(k_vals[1:len(x_vals)//2], vals[100, 100:199])
 
     plt.figure(2)
-    plt.imshow(np.fft.fftshift(psi_fft2), cmap="gray")
-
-    plt.figure(3)
-    plt.plot(k, H_0*filter)
+    plt.plot(k_vals[1:len(x_vals) // 2], (vals*filter)[100, 100:199])
     plt.show()
     return 0
 
