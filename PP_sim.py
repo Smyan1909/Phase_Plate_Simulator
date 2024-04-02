@@ -895,7 +895,7 @@ def fourier_ring_correlation(image1, image2):
     return frc, r_vec
 
 def CTF_envelope_function():
-    sigma = 100.0
+    sigma = 60.0
     size = 200
     filter = np.zeros((size, size))
     center = size // 2
