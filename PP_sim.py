@@ -479,17 +479,27 @@ def find_Potential_CTF():
                          np.fft.fftfreq(len(y_vals), d=(voxelsize * angstrom)))
     k = np.sqrt(kx ** 2 + ky ** 2)
 
-    H_0 = mt.objective_transfer_function(k, mt.wavelength, 2e-3, 600e-9, 1)
+    H_0 = mt.objective_transfer_function(k, mt.wavelength, 2e-3, 0, 1)
 
     psi_with_noise = mt.generate_noise(psi)
 
     psi_magnitude = np.fft.fftshift(np.fft.fft2(psi_with_noise)*H_0)
 
+    pp_pot1, z_pos_arr = read_Potential_Map("PP_Pot_map_0.txt", "z_pos_0.txt")
+    pp_pot2, z_pos_arr2 = read_Potential_Map("PP_Pot_map_1.txt", "z_pos_1.txt")
 
+    tot_pot = np.vstack((pp_pot1, np.rot90(pp_pot2, axes=(1, 2))))
+    z_pos = np.array([z_pos_arr, z_pos_arr2])
+
+    proj_pot = np.sum(tot_pot * np.reshape(z_pos, (2 * len(z_pos_arr), 1, 1)), axis=0)
+
+    proj_pot -= np.min(proj_pot)
+
+    psi_magnitude *= np.exp(-1j*mt.sigma_e*proj_pot)
 
     image = np.abs(np.fft.ifft2(np.fft.ifftshift(psi_magnitude)))**2
 
-    psi_fft = np.clip(np.abs(np.fft.fft2(image))**2, 0, np.percentile(np.abs(np.fft.fft2(image))**2, 99))
+    psi_fft = np.clip(np.abs(np.fft.fft2(image)), 0, np.percentile(np.abs(np.fft.fft2(image)), 99))
 
     plt.figure(1)
     plt.imshow(image, cmap="gray")
@@ -887,7 +897,7 @@ def fourier_ring_correlation(image1, image2):
 if __name__ == "__main__":
     #tester_1()
     #pp_stationary()
-    #find_Potential_CTF()
+    find_Potential_CTF()
     #beam_electron_implementation()
     #create_Potential_Maps()
-    test_Read_Potential()
+    #test_Read_Potential()
