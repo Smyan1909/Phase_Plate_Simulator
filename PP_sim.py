@@ -895,7 +895,7 @@ def fourier_ring_correlation(image1, image2):
     return frc, r_vec
 
 def CTF_envelope_function():
-    sigma = 50.0
+    sigma = 100.0
     size = 200
     filter = np.zeros((size, size))
     center = size // 2
@@ -912,11 +912,17 @@ def CTF_envelope_function():
 
     k_vals = np.fft.fftfreq(len(x_vals), d=(voxelsize * angstrom))
     vals = np.sin(np.fft.fftshift(mt.lens_abber_func(k, mt.wavelength, 2e-3, 82e-9)))
+
     plt.figure(1)
-    plt.plot(k_vals[1:len(x_vals)//2], vals[100, 100:199])
+    plt.contourf(x_vals, y_vals, filter, cmap='viridis')
+    plt.colorbar()
 
     plt.figure(2)
+    plt.plot(k_vals[1:len(x_vals) // 2], filter[100, 100:199])
     plt.plot(k_vals[1:len(x_vals) // 2], (vals*filter)[100, 100:199])
+
+    plt.figure(3)
+    plt.plot(k_vals[1:len(x_vals) // 2], vals[100, 100:199])
     plt.show()
     return 0
 
