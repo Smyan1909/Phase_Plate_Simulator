@@ -995,13 +995,13 @@ def multiple_projection_acquisition(filename, base_save_name, num_projections=5)
 
 
 
-def CTF_envelope_function(size=256, sigma=50):
+def CTF_envelope_function(size=256, sigma=128):
     filter = np.zeros((size, size))
     center = size // 2
     for i in range(size):
         for j in range(size):
             filter[i, j] = np.exp(-((i - center) ** 2 + (j - center) ** 2) / (2 * sigma ** 2))
-    filter /= np.sum(filter)  # Normalize filter to ensure sum is 1
+    #filter /= np.sum(filter)  # Normalize filter to ensure sum is 1
 
     x_vals, y_vals = mt.generate_grid(mt.pots)
 
@@ -1017,11 +1017,12 @@ def CTF_envelope_function(size=256, sigma=50):
     plt.colorbar()
 
     plt.figure(2)
-    plt.plot(k_vals[1:len(x_vals) // 2], filter[100, 100:199])
-    plt.plot(k_vals[1:len(x_vals) // 2], (vals*filter)[100, 100:199])
-
-    plt.figure(3)
-    plt.plot(k_vals[1:len(x_vals) // 2], vals[100, 100:199])
+    plt.plot(k_vals[1:len(x_vals) // 2], filter[128, 128:255], label = 'Gaussian Filter')
+    plt.plot(k_vals[1:len(x_vals) // 2], (vals*filter)[128, 128:255], label = 'Filtered CTF')
+    plt.plot(k_vals[1:len(x_vals) // 2], vals[128, 128:255], label = 'CTF')
+    plt.xlabel(r"Spatial Frequency [$nm^{-1}$]")
+    plt.ylabel(r"CTF($k$)")
+    plt.legend(loc = 'upper left')
     plt.show()
     return filter
 
@@ -1033,5 +1034,5 @@ if __name__ == "__main__":
     #beam_electron_implementation()
     #create_Potential_Maps()
     #test_Read_Potential()
-    #CTF_envelope_function()
-    multislice_phaseplate_tester()
+    CTF_envelope_function()
+    #multislice_phaseplate_tester()
