@@ -1,5 +1,7 @@
 import random
 import math
+
+import mrcfile
 import numpy as np
 import matplotlib.pyplot as plt
 import time
@@ -457,14 +459,14 @@ def exitwave_pos(num_points, psi):
     x_positions_rescaled = (x_positions * scale) + min_physical
     y_positions_rescaled = (y_positions * scale) + min_physical
 
-    """
-    plt.figure()
-    plt.scatter(x_positions_rescaled*10**6, y_positions_rescaled*10**6, color='blue', alpha=0.1)
-    plt.xlabel(r"x [$\mu m$]")
-    plt.ylabel(r"y [$\mu m$]")
-    plt.grid(True)
-    plt.show()
-    """
+
+    #plt.figure()
+    #plt.scatter(x_positions_rescaled*10**6, y_positions_rescaled*10**6, color='blue', alpha=0.1)
+    #plt.xlabel(r"x [$\mu m$]")
+    #plt.ylabel(r"y [$\mu m$]")
+    #plt.grid(True)
+    #plt.show()
+
 
     return x_positions_rescaled[0], y_positions_rescaled[0]
 
@@ -618,7 +620,7 @@ def read_Potential_Map(pot_map_file, z_pos_file):
     z_pos_arr = np.loadtxt(z_pos_file)
 
     pot_arr = np.reshape(pot_arr_flat, (len(z_pos_arr)-1, 256, 256))
-    z_pos_arr = [np.abs(z_pos_arr[i + 1] - z_pos_arr[i]) for i in range(len(z_pos_arr) - 1)]
+    z_pos_arr = np.array([np.abs(z_pos_arr[i + 1] - z_pos_arr[i]) for i in range(len(z_pos_arr) - 1)])
     return pot_arr, z_pos_arr
 
 def test_Read_Potential():
@@ -894,9 +896,106 @@ def fourier_ring_correlation(image1, image2):
 
     return frc, r_vec
 
-def CTF_envelope_function():
-    sigma = 100.0
-    size = 200
+# TODO Fix this function
+def multislice_phaseplate(psi, pp_pots, dz_vec, spatial_freq):
+
+    psi_ft = np.fft.fftshift(np.fft.fft2(psi))
+
+    for i in range(len(dz_vec)):
+        real_space_propagator = np.fft.ifft2(mt.fresnel_propagator(spatial_freq, dz_vec[i]))
+        fourier_transmission_function = np.exp(-1j * pp_pots[i, :, :] * dz_vec[i] * mt.sigma_e)
+
+        psi_ft = np.fft.fftshift(np.fft.fft2(np.fft.ifft2(np.fft.ifftshift(psi_ft * fourier_transmission_function)) * real_space_propagator))
+
+    return np.fft.ifftshift(psi_ft)
+
+
+def multislice_phaseplate_tester():
+    x, y = mt.generate_grid(mt.pots)
+
+    kx, ky = np.meshgrid(np.fft.fftfreq(len(x), d=(voxelsize * angstrom)),
+                         np.fft.fftfreq(len(y), d=(voxelsize * angstrom)))
+    r = np.sqrt(kx ** 2 + ky ** 2)
+
+    psi = mt.multislice(x, y, 256)
+
+    H_0 = mt.objective_transfer_function(r, mt.wavelength, 2e-3, 0, 1)
+
+    pp_beam1, z_pos_1 = read_Potential_Map("PP_Pot_map_0.txt", "z_pos_0.txt")
+    pp_beam2, z_pos_2 = read_Potential_Map("PP_Pot_map_1.txt", "z_pos_1.txt")
+
+    pp_beam2 = np.rot90(pp_beam2, axes=(1, 2))
+
+    dz_vec = np.concatenate((z_pos_1, z_pos_2))
+
+    pp_pots = np.vstack((pp_beam1, pp_beam2))
+
+    pp_pots -= np.min(pp_pots)
+
+    psi_with_noise = mt.generate_noise(psi)
+
+    psi_after_pp = multislice_phaseplate(psi_with_noise, pp_pots, dz_vec, r)
+
+    image = np.abs(np.fft.ifft2(psi_after_pp * H_0))**2
+
+    plt.figure(1)
+    plt.imshow(image, cmap="gray")
+    plt.show()
+
+#Not Tested (NOT WORKING!)
+def multiple_projection_acquisition(filename, base_save_name, num_projections=5):
+    mt.filename = filename
+
+    x, y = mt.generate_grid(mt.pots)
+
+    kx, ky = np.meshgrid(np.fft.fftfreq(len(x), d=(voxelsize * angstrom)),
+                         np.fft.fftfreq(len(y), d=(voxelsize * angstrom)))
+    k_four = np.sqrt(kx ** 2 + ky ** 2)
+    print("Performing Multislice ... ")
+    start_mt_time = time.time()
+    psi = mt.multislice(x, y, 256)
+    end_mt_time = time.time()
+    print(f"Multislice Complete! (Time: {end_mt_time - start_mt_time}s)")
+
+    psi_with_noise = mt.generate_noise(psi)
+
+    for i in range(num_projections):
+        print(f"Starting Image Acquisition iteration {i}")
+        start_acq_time = time.time()
+        pot_num1 = random.randint(0, 19)
+        pot_num2 = random.randint(0, 19)
+
+        pp_beam1, z_pos_1 = read_Potential_Map(f"PP_Pot_map_{pot_num1}.txt", f"z_pos_{pot_num1}.txt")
+        pp_beam2, z_pos_2 = read_Potential_Map(f"PP_Pot_map_{pot_num2}.txt", f"z_pos_{pot_num2}.txt")
+
+        pp_beam2 = np.rot90(pp_beam2, axes=(1, 2))
+
+        dz_vec = np.concatenate((z_pos_1, z_pos_2))
+
+        pp_pots = np.vstack((pp_beam1, pp_beam2))
+
+        pp_pots -= np.min(pp_pots)
+
+        psi_after_pp = multislice_phaseplate(psi_with_noise, pp_pots, dz_vec, k_four)
+
+        H_0 = mt.objective_transfer_function(k_four, mt.wavelength, 2e-3, i*20e-9, 1)
+
+        image = np.abs(np.fft.ifft2(psi_after_pp * H_0))**2
+
+        if os.path.exists(f"{base_save_name}_{i}.mrc"):
+            with mrcfile.open(f"{base_save_name}_{i}.mrc") as mrc:
+                mrc.set_data(image)
+        else:
+            with mrcfile.new(f"{base_save_name}_{i}.mrc") as mrc:
+                mrc.set_data(image)
+
+        end_acq_time = time.time()
+        print(f"Image Acquisition done! (Time {end_acq_time-start_acq_time}s)")
+
+
+
+
+def CTF_envelope_function(size=256, sigma=50):
     filter = np.zeros((size, size))
     center = size // 2
     for i in range(size):
@@ -924,7 +1023,7 @@ def CTF_envelope_function():
     plt.figure(3)
     plt.plot(k_vals[1:len(x_vals) // 2], vals[100, 100:199])
     plt.show()
-    return 0
+    return filter
 
 #Write code to run here for encapsulation (SMYAN)
 if __name__ == "__main__":
@@ -934,4 +1033,5 @@ if __name__ == "__main__":
     #beam_electron_implementation()
     #create_Potential_Maps()
     #test_Read_Potential()
-    CTF_envelope_function()
+    #CTF_envelope_function()
+    multislice_phaseplate_tester()

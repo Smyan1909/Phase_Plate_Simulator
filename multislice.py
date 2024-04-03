@@ -227,15 +227,16 @@ def test_mult():
 
     plt.show()
 
-def generate_noise(wavefunction):
+def generate_noise(wavefunction, rel_noise_level=0.1):
     """
     Generates noise in an arbitrary wavefunction. Is to be used to simulate noise from the specimen.
     :param wavefunction: An arbitrary 2D wavefunction
+    :param rel_noise_level: Relative noise level (Optional). Set to 0.1 if left empty
     :return: wavefunction with complex-valued gaussian noise
     """
     noise_mean = 0
-    noise_std_imag = 0.1 * np.mean(np.imag(wavefunction))
-    noise_std_real = 0.1 * np.mean(np.real(wavefunction))
+    noise_std_imag = rel_noise_level * np.mean(np.imag(wavefunction))
+    noise_std_real = rel_noise_level * np.mean(np.real(wavefunction))
 
     noise_real = np.random.normal(loc=noise_mean, scale=noise_std_real, size=wavefunction.shape)
     noise_imag = np.random.normal(loc=noise_mean, scale=noise_std_imag, size=wavefunction.shape)
