@@ -1,5 +1,7 @@
 import random
 import math
+
+import mrcfile
 import numpy as np
 import matplotlib.pyplot as plt
 import time
@@ -894,6 +896,7 @@ def fourier_ring_correlation(image1, image2):
 
     return frc, r_vec
 
+# TODO Fix this function
 def multislice_phaseplate(psi, pp_pots, dz_vec, spatial_freq):
 
     psi_ft = np.fft.fftshift(np.fft.fft2(psi))
@@ -905,6 +908,8 @@ def multislice_phaseplate(psi, pp_pots, dz_vec, spatial_freq):
         psi_ft = np.fft.fftshift(np.fft.fft2(np.fft.ifft2(np.fft.ifftshift(psi_ft * fourier_transmission_function)) * real_space_propagator))
 
     return np.fft.ifftshift(psi_ft)
+
+
 def multislice_phaseplate_tester():
     x, y = mt.generate_grid(mt.pots)
 
@@ -937,10 +942,60 @@ def multislice_phaseplate_tester():
     plt.imshow(image, cmap="gray")
     plt.show()
 
+#Not Tested (NOT WORKING!)
+def multiple_projection_acquisition(filename, base_save_name, num_projections=5):
+    mt.filename = filename
 
-def CTF_envelope_function():
-    sigma = 50.0
-    size = 200
+    x, y = mt.generate_grid(mt.pots)
+
+    kx, ky = np.meshgrid(np.fft.fftfreq(len(x), d=(voxelsize * angstrom)),
+                         np.fft.fftfreq(len(y), d=(voxelsize * angstrom)))
+    k_four = np.sqrt(kx ** 2 + ky ** 2)
+    print("Performing Multislice ... ")
+    start_mt_time = time.time()
+    psi = mt.multislice(x, y, 256)
+    end_mt_time = time.time()
+    print(f"Multislice Complete! (Time: {end_mt_time - start_mt_time}s)")
+
+    psi_with_noise = mt.generate_noise(psi)
+
+    for i in range(num_projections):
+        print(f"Starting Image Acquisition iteration {i}")
+        start_acq_time = time.time()
+        pot_num1 = random.randint(0, 19)
+        pot_num2 = random.randint(0, 19)
+
+        pp_beam1, z_pos_1 = read_Potential_Map(f"PP_Pot_map_{pot_num1}.txt", f"z_pos_{pot_num1}.txt")
+        pp_beam2, z_pos_2 = read_Potential_Map(f"PP_Pot_map_{pot_num2}.txt", f"z_pos_{pot_num2}.txt")
+
+        pp_beam2 = np.rot90(pp_beam2, axes=(1, 2))
+
+        dz_vec = np.concatenate((z_pos_1, z_pos_2))
+
+        pp_pots = np.vstack((pp_beam1, pp_beam2))
+
+        pp_pots -= np.min(pp_pots)
+
+        psi_after_pp = multislice_phaseplate(psi_with_noise, pp_pots, dz_vec, k_four)
+
+        H_0 = mt.objective_transfer_function(k_four, mt.wavelength, 2e-3, i*20e-9, 1)
+
+        image = np.abs(np.fft.ifft2(psi_after_pp * H_0))**2
+
+        if os.path.exists(f"{base_save_name}_{i}.mrc"):
+            with mrcfile.open(f"{base_save_name}_{i}.mrc") as mrc:
+                mrc.set_data(image)
+        else:
+            with mrcfile.new(f"{base_save_name}_{i}.mrc") as mrc:
+                mrc.set_data(image)
+
+        end_acq_time = time.time()
+        print(f"Image Acquisition done! (Time {end_acq_time-start_acq_time}s)")
+
+
+
+
+def CTF_envelope_function(size=256, sigma=50):
     filter = np.zeros((size, size))
     center = size // 2
     for i in range(size):
