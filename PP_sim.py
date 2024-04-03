@@ -896,16 +896,15 @@ def fourier_ring_correlation(image1, image2):
 
     return frc, r_vec
 
-# TODO Fix this function
 def multislice_phaseplate(psi, pp_pots, dz_vec, spatial_freq):
 
     psi_ft = np.fft.fftshift(np.fft.fft2(psi))
 
     for i in range(len(dz_vec)):
-        real_space_propagator = np.fft.ifft2(mt.fresnel_propagator(spatial_freq, dz_vec[i]))
-        fourier_transmission_function = np.exp(-1j * pp_pots[i, :, :] * dz_vec[i] * mt.sigma_e)
+        propagator = mt.fresnel_propagator(spatial_freq, dz_vec[i])
+        transmission_function = np.exp(-1j * pp_pots[i, :, :] * dz_vec[i] * mt.sigma_e)
 
-        psi_ft = np.fft.fftshift(np.fft.fft2(np.fft.ifft2(np.fft.ifftshift(psi_ft * fourier_transmission_function)) * real_space_propagator))
+        psi_ft = np.fft.ifft2(propagator * np.fft.fft2(psi_ft * transmission_function))
 
     return np.fft.ifftshift(psi_ft)
 
@@ -915,11 +914,15 @@ def multislice_phaseplate_tester():
 
     kx, ky = np.meshgrid(np.fft.fftfreq(len(x), d=(voxelsize * angstrom)),
                          np.fft.fftfreq(len(y), d=(voxelsize * angstrom)))
-    r = np.sqrt(kx ** 2 + ky ** 2)
+    k_four = np.sqrt(kx ** 2 + ky ** 2)
 
     psi = mt.multislice(x, y, 256)
 
-    H_0 = mt.objective_transfer_function(r, mt.wavelength, 2e-3, 0, 1)
+    kx, ky = np.meshgrid(np.fft.fftfreq(len(x), d=(voxelsize * angstrom)),
+                         np.fft.fftfreq(len(y), d=(voxelsize * angstrom)))
+    k_four = np.sqrt(kx ** 2 + ky ** 2)
+
+    H_0 = mt.objective_transfer_function(k_four, mt.wavelength, 2e-3, 0, 1)*CTF_envelope_function(sigma=128)
 
     pp_beam1, z_pos_1 = read_Potential_Map("PP_Pot_map_0.txt", "z_pos_0.txt")
     pp_beam2, z_pos_2 = read_Potential_Map("PP_Pot_map_1.txt", "z_pos_1.txt")
@@ -934,23 +937,56 @@ def multislice_phaseplate_tester():
 
     psi_with_noise = mt.generate_noise(psi)
 
+    dk, start_k, end_k = mt.freq_analysis()
+
+    rx, ry = np.meshgrid(np.fft.fftfreq(len(x), d=dk),
+                         np.fft.fftfreq(len(y), d=dk))
+
+    r = np.sqrt(rx**2 + ry**2)
+
     psi_after_pp = multislice_phaseplate(psi_with_noise, pp_pots, dz_vec, r)
 
     image = np.abs(np.fft.ifft2(psi_after_pp * H_0))**2
 
+    image = mt.normalize_and_rescale(image)
+
+    image_fft = np.clip(np.abs(np.fft.fft2(image)), 0, np.percentile(np.abs(np.fft.fft2(image)), 99))
+
+    phase = np.angle(psi_with_noise)
+
     plt.figure(1)
+    plt.subplot(1, 3, 1)
+    plt.title(r"Image with $Cs = 2mm$ and $D = 0nm$")
     plt.imshow(image, cmap="gray")
+
+    plt.subplot(1, 3, 2)
+    plt.title(r"CTF with $Cs = 2mm$ and $D = 0nm$")
+    plt.imshow(np.fft.fftshift(image_fft), cmap="gray")
+
+    plt.subplot(1,3,3)
+    plt.title(r"Phase of the Exit wave")
+    plt.imshow(phase, cmap="gray")
+
     plt.show()
 
-#Not Tested (NOT WORKING!)
 def multiple_projection_acquisition(filename, base_save_name, num_projections=5):
     mt.filename = filename
+
+    mt.regenerate_Pots()
 
     x, y = mt.generate_grid(mt.pots)
 
     kx, ky = np.meshgrid(np.fft.fftfreq(len(x), d=(voxelsize * angstrom)),
                          np.fft.fftfreq(len(y), d=(voxelsize * angstrom)))
     k_four = np.sqrt(kx ** 2 + ky ** 2)
+
+    dk, start_k, end_k = mt.freq_analysis()
+
+    rx, ry = np.meshgrid(np.fft.fftfreq(len(x), d=dk),
+                         np.fft.fftfreq(len(y), d=dk))
+
+    r = np.sqrt(rx ** 2 + ry ** 2)
+
     print("Performing Multislice ... ")
     start_mt_time = time.time()
     psi = mt.multislice(x, y, 256)
@@ -976,17 +1012,21 @@ def multiple_projection_acquisition(filename, base_save_name, num_projections=5)
 
         pp_pots -= np.min(pp_pots)
 
-        psi_after_pp = multislice_phaseplate(psi_with_noise, pp_pots, dz_vec, k_four)
+        psi_after_pp = multislice_phaseplate(psi_with_noise, pp_pots, dz_vec, r)
 
-        H_0 = mt.objective_transfer_function(k_four, mt.wavelength, 2e-3, i*20e-9, 1)
+        D = i*20e-9
+
+        H_0 = mt.objective_transfer_function(k_four, mt.wavelength, 2e-3, D, 1)*CTF_envelope_function()
 
         image = np.abs(np.fft.ifft2(psi_after_pp * H_0))**2
 
-        if os.path.exists(f"{base_save_name}_{i}.mrc"):
-            with mrcfile.open(f"{base_save_name}_{i}.mrc") as mrc:
+        image = mt.normalize_and_rescale(image)
+
+        if os.path.exists(f"{base_save_name}_D_{D}.mrc"):
+            with mrcfile.open(f"{base_save_name}_D_{D}.mrc", "r+") as mrc:
                 mrc.set_data(image)
         else:
-            with mrcfile.new(f"{base_save_name}_{i}.mrc") as mrc:
+            with mrcfile.new(f"{base_save_name}_D_{D}.mrc") as mrc:
                 mrc.set_data(image)
 
         end_acq_time = time.time()
@@ -994,14 +1034,20 @@ def multiple_projection_acquisition(filename, base_save_name, num_projections=5)
 
 
 
-
 def CTF_envelope_function(size=256, sigma=128):
+
     filter = np.zeros((size, size))
+
     center = size // 2
     for i in range(size):
         for j in range(size):
             filter[i, j] = np.exp(-((i - center) ** 2 + (j - center) ** 2) / (2 * sigma ** 2))
-    #filter /= np.sum(filter)  # Normalize filter to ensure sum is 1
+
+    return filter
+
+def CTF_envelope_function_tester(size=256, sigma=128):
+
+    filter = CTF_envelope_function(size, sigma)
 
     x_vals, y_vals = mt.generate_grid(mt.pots)
 
@@ -1024,7 +1070,16 @@ def CTF_envelope_function(size=256, sigma=128):
     plt.ylabel(r"CTF($k$)")
     plt.legend(loc = 'upper left')
     plt.show()
-    return filter
+
+def view_CTF(input_mrc_file):
+    with mrcfile.open(input_mrc_file) as mrc:
+        image = mrc.data
+
+    image_fft = np.clip(np.abs(np.fft.fft2(image)), 0, np.percentile(np.abs(np.fft.fft2(image)), 99))
+
+    plt.imshow(np.fft.fftshift(image_fft), cmap="gray")
+    plt.show()
+
 
 #Write code to run here for encapsulation (SMYAN)
 if __name__ == "__main__":
@@ -1034,5 +1089,7 @@ if __name__ == "__main__":
     #beam_electron_implementation()
     #create_Potential_Maps()
     #test_Read_Potential()
-    CTF_envelope_function()
+    #CTF_envelope_function_tester()
     #multislice_phaseplate_tester()
+    #multiple_projection_acquisition("4xcd.mrc", "4xcd_topdown")
+    view_CTF("4xcd_topdown_D_2e-08.mrc")

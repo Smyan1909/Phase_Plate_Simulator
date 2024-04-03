@@ -32,6 +32,14 @@ voxelsize = 1 #Ångström
 padding_size = 50  # This is an example value, adjust as needed
 padded_pots = np.pad(pots, pad_width=padding_size, mode='constant', constant_values=0)
 
+def regenerate_Pots():
+    """
+    Function used to regenerate the new potentials when the filename is dynamically changed
+    :return: Nothing
+    """
+    with mrcfile.open(filename) as mrc:
+        pots = mrc.data
+
 def generate_grid(V):
     """
     Generates the grid for the multislice simulation
