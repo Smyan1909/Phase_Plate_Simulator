@@ -998,8 +998,8 @@ def multiple_projection_acquisition(filename, base_save_name, num_projections=5)
     for i in range(num_projections):
         print(f"Starting Image Acquisition iteration {i}")
         start_acq_time = time.time()
-        pot_num1 = random.randint(0, 19)
-        pot_num2 = random.randint(0, 19)
+        pot_num1 = random.randint(0, 21)
+        pot_num2 = random.randint(0, 21)
 
         pp_beam1, z_pos_1 = read_Potential_Map(f"PP_Pot_map_{pot_num1}.txt", f"z_pos_{pot_num1}.txt")
         pp_beam2, z_pos_2 = read_Potential_Map(f"PP_Pot_map_{pot_num2}.txt", f"z_pos_{pot_num2}.txt")
@@ -1080,9 +1080,16 @@ def view_CTF(input_mrc_file):
     plt.imshow(np.fft.fftshift(image_fft), cmap="gray")
     plt.show()
 
-def generate_all_projections():
+def generate_all_projections(num_rotations=21):
+    for i in range(num_rotations):
+        print(f"Starting Projection acquistion iteration {i} of {num_rotations}")
+        if i == 0:
+            multiple_projection_acquisition("4xcd.mrc", "4xcd_projection")
+        else:
+            multiple_projection_acquisition(f"4xcd_rotated_{i}.mrc", f"4xcd_rotated_{i}_projection")
+        print("Projection acquistion done!")
 
-    pass
+
 
 #Write code to run here for encapsulation (SMYAN)
 if __name__ == "__main__":
@@ -1095,4 +1102,5 @@ if __name__ == "__main__":
     #CTF_envelope_function_tester()
     #multislice_phaseplate_tester()
     #multiple_projection_acquisition("4xcd.mrc", "4xcd_topdown")
-    view_CTF("4xcd_topdown_D_2e-08.mrc")
+    #view_CTF("4xcd_topdown_D_2e-08.mrc")
+    generate_all_projections()
