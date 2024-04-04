@@ -1022,11 +1022,11 @@ def multiple_projection_acquisition(filename, base_save_name, num_projections=5)
 
         image = mt.normalize_and_rescale(image)
 
-        if os.path.exists(f"{base_save_name}_D_{D}.mrc"):
-            with mrcfile.open(f"{base_save_name}_D_{D}.mrc", "r+") as mrc:
+        if os.path.exists(f"{base_save_name}_D_{D:.0e}.mrc"):
+            with mrcfile.open(f"{base_save_name}_D_{D:.0e}.mrc", "r+") as mrc:
                 mrc.set_data(image)
         else:
-            with mrcfile.new(f"{base_save_name}_D_{D}.mrc") as mrc:
+            with mrcfile.new(f"{base_save_name}_D_{D:.0e}.mrc") as mrc:
                 mrc.set_data(image)
 
         end_acq_time = time.time()
@@ -1080,6 +1080,9 @@ def view_CTF(input_mrc_file):
     plt.imshow(np.fft.fftshift(image_fft), cmap="gray")
     plt.show()
 
+def generate_all_projections():
+
+    pass
 
 #Write code to run here for encapsulation (SMYAN)
 if __name__ == "__main__":
