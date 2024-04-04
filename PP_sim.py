@@ -993,9 +993,10 @@ def multiple_projection_acquisition(filename, base_save_name, num_projections=5)
     end_mt_time = time.time()
     print(f"Multislice Complete! (Time: {end_mt_time - start_mt_time}s)")
 
-    psi_with_noise = mt.generate_noise(psi)
-
     for i in range(num_projections):
+
+        psi_with_noise = mt.generate_noise(psi)
+
         print(f"Starting Image Acquisition iteration {i}")
         start_acq_time = time.time()
         pot_num1 = random.randint(0, 21)
