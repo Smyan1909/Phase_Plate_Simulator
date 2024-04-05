@@ -995,7 +995,7 @@ def multiple_projection_acquisition(filename, base_save_name, num_projections=5)
 
     for i in range(num_projections):
 
-        psi_with_noise = mt.generate_noise(psi)
+        psi_with_noise = mt.generate_noise(psi, rel_noise_level=0.07)
 
         print(f"Starting Image Acquisition iteration {i}")
         start_acq_time = time.time()
@@ -1090,7 +1090,12 @@ def generate_all_projections(num_rotations=21):
             multiple_projection_acquisition(f"4xcd_rotated_{i}.mrc", f"4xcd_rotated_{i}_projection")
         print("Projection acquistion done!")
 
+def plot_molecule(input_mrc_file):
+    with mrcfile.open(input_mrc_file) as mrc:
+        image = mrc.data
 
+    plt.imshow(image, cmap="gray")
+    plt.show()
 
 #Write code to run here for encapsulation (SMYAN)
 if __name__ == "__main__":
@@ -1104,4 +1109,5 @@ if __name__ == "__main__":
     #multislice_phaseplate_tester()
     #multiple_projection_acquisition("4xcd.mrc", "4xcd_topdown")
     #view_CTF("4xcd_topdown_D_2e-08.mrc")
+    #plot_molecule("4xcd_rotated_1_projection_D_4e-08.mrc")
     generate_all_projections()
