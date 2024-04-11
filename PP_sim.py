@@ -1015,7 +1015,7 @@ def multiple_projection_acquisition(filename, base_save_name, num_projections=5)
 
         psi_after_pp = multislice_phaseplate(psi_with_noise, pp_pots, dz_vec, r)
 
-        D = i*20e-9
+        D = -10e-9 + (5e-9*i)
 
         H_0 = mt.objective_transfer_function(k_four, mt.wavelength, 2e-3, D, 1)*CTF_envelope_function()
 
@@ -1078,7 +1078,29 @@ def view_CTF(input_mrc_file):
 
     image_fft = np.clip(np.abs(np.fft.fft2(image)), 0, np.percentile(np.abs(np.fft.fft2(image)), 99))
 
-    plt.imshow(np.fft.fftshift(image_fft), cmap="gray")
+    ctf = np.fft.fftshift(image_fft)
+
+    plt.figure(1)
+    plt.imshow(ctf, cmap="gray")
+
+    ctf = (ctf - np.min(ctf))/(np.max(ctf) - np.min(ctf))
+
+    plt.figure(2)
+    plt.plot(np.linspace(0, len(ctf[128, 128:255]), num=len(ctf[128, 128:255])), ctf[128, 128:255])
+
+    center_row, center_col = 127, 127
+
+    # Determine the maximum offset from the center to the top-right corner
+    # Since the array is square and indexing starts at 0, top-right is at [0, 255]
+    max_offset = min(center_row, 255 - center_col)  # This is the maximum number of steps you can take diagonally
+
+    # Compute the diagonal indices
+    row_indices = np.arange(center_row, center_row - max_offset - 1, -1)
+    col_indices = np.arange(center_col, center_col + max_offset + 1)
+
+
+    plt.figure(3)
+    plt.plot(np.linspace(0, len(ctf[row_indices, col_indices]), num=len(ctf[row_indices, col_indices])), ctf[row_indices, col_indices])
     plt.show()
 
 def generate_all_projections(num_rotations=21):
@@ -1108,6 +1130,6 @@ if __name__ == "__main__":
     #CTF_envelope_function_tester()
     #multislice_phaseplate_tester()
     #multiple_projection_acquisition("4xcd.mrc", "4xcd_topdown")
-    #view_CTF("4xcd_topdown_D_2e-08.mrc")
+    #view_CTF("4xcd_topdown_D_0e+00.mrc")
     #plot_molecule("4xcd_rotated_1_projection_D_4e-08.mrc")
     generate_all_projections()
