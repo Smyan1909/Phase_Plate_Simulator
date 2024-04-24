@@ -17,7 +17,7 @@ sigma_e = 2*np.pi*m_relativistic*e*wavelength/(h**2) #Interaction parameter
 
 #Sets the file for the simulation
 #When performing multiple simulations this variable value should be changed dynamically
-filename = "4xcd.mrc"
+filename = "6drv.mrc"
 
 #Load the file to run
 with mrcfile.open(filename) as mrc:
@@ -301,15 +301,15 @@ def ideal_image():
 
     V, dz = calculate_proj_pot(V=pots, nslice=200)
 
-    #plt.imshow(np.sum(V, axis=0), cmap="gray")
-    #plt.xlabel("x [Å]")
-    #plt.ylabel("y [Å]")
-    #plt.show()
+    plt.imshow(np.sum(V, axis=0), cmap="gray")
+    plt.xlabel("x [Å]")
+    plt.ylabel("y [Å]")
+    plt.show()
 
     return np.sum(V, axis=0)
 if __name__ == "__main__":
     #test_mult()
     #print(freq_analysis())
-    #ideal_image()
+    ideal_image()
     #print(np.sqrt((4/3)*2e-3*wavelength))
-    test_mult_with_noise_and_rescaling()
+    #test_mult_with_noise_and_rescaling()

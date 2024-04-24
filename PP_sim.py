@@ -12,6 +12,7 @@ import scipy.spatial.distance as distance
 from scipy.integrate import simps
 import csv
 import os
+import multiprocessing
 
 
 pp_electrons = 200
@@ -995,7 +996,7 @@ def multiple_projection_acquisition(filename, base_save_name, num_projections=5)
 
     for i in range(num_projections):
 
-        psi_with_noise = mt.generate_noise(psi, rel_noise_level=0.07)
+        psi_with_noise = mt.generate_noise(psi, rel_noise_level=0.2) #Change this value for more/less noise
 
         print(f"Starting Image Acquisition iteration {i}")
         start_acq_time = time.time()
@@ -1033,7 +1034,69 @@ def multiple_projection_acquisition(filename, base_save_name, num_projections=5)
         end_acq_time = time.time()
         print(f"Image Acquisition done! (Time {end_acq_time-start_acq_time}s)")
 
+def multiple_projection_acquisition_with_crossing_beams(filename, base_save_name, num_projections=5):
+    mt.filename = filename
 
+    mt.regenerate_Pots()
+
+    x, y = mt.generate_grid(mt.pots)
+
+    kx, ky = np.meshgrid(np.fft.fftfreq(len(x), d=(voxelsize * angstrom)),
+                         np.fft.fftfreq(len(y), d=(voxelsize * angstrom)))
+    k_four = np.sqrt(kx ** 2 + ky ** 2)
+
+    dk, start_k, end_k = mt.freq_analysis()
+
+    rx, ry = np.meshgrid(np.fft.fftfreq(len(x), d=dk),
+                         np.fft.fftfreq(len(y), d=dk))
+
+    r = np.sqrt(rx ** 2 + ry ** 2)
+
+    print("Performing Multislice ... ")
+    start_mt_time = time.time()
+    psi = mt.multislice(x, y, 256)
+    end_mt_time = time.time()
+    print(f"Multislice Complete! (Time: {end_mt_time - start_mt_time}s)")
+
+    for i in range(num_projections):
+
+        psi_with_noise = mt.generate_noise(psi, rel_noise_level=0.2) #Change this value for more/less noise
+
+        print(f"Starting Image Acquisition iteration {i}")
+        start_acq_time = time.time()
+        pot_num1 = random.randint(0, 21)
+        pot_num2 = random.randint(0, 21)
+
+        pp_beam1, z_pos_1 = read_Potential_Map(f"PP_Pot_map_{pot_num1}.txt", f"z_pos_{pot_num1}.txt")
+        pp_beam2, z_pos_2 = read_Potential_Map(f"PP_Pot_map_{pot_num2}.txt", f"z_pos_{pot_num2}.txt")
+
+        pp_beam2 = np.rot90(pp_beam2, axes=(1, 2))
+
+        dz_vec = z_pos_1
+
+        pp_pots = pp_beam1 + pp_beam2
+
+        pp_pots -= np.min(pp_pots)
+
+        psi_after_pp = multislice_phaseplate(psi_with_noise, pp_pots, dz_vec, r)
+
+        D = -10e-9 + (5e-9*i)
+
+        H_0 = mt.objective_transfer_function(k_four, mt.wavelength, 2e-3, D, 1)*CTF_envelope_function()
+
+        image = np.abs(np.fft.ifft2(psi_after_pp * H_0))**2
+
+        image = mt.normalize_and_rescale(image)
+
+        if os.path.exists(f"{base_save_name}_D_{D:.0e}.mrc"):
+            with mrcfile.open(f"{base_save_name}_D_{D:.0e}.mrc", "r+") as mrc:
+                mrc.set_data(image)
+        else:
+            with mrcfile.new(f"{base_save_name}_D_{D:.0e}.mrc") as mrc:
+                mrc.set_data(image)
+
+        end_acq_time = time.time()
+        print(f"Image Acquisition done! (Time {end_acq_time-start_acq_time}s)")
 
 def CTF_envelope_function(size=256, sigma=128):
 
@@ -1107,9 +1170,9 @@ def generate_all_projections(num_rotations=21):
     for i in range(num_rotations):
         print(f"Starting Projection acquistion iteration {i} of {num_rotations}")
         if i == 0:
-            multiple_projection_acquisition("4xcd.mrc", "4xcd_projection")
+            multiple_projection_acquisition("6drv.mrc", "6drv_projection")
         else:
-            multiple_projection_acquisition(f"4xcd_rotated_{i}.mrc", f"4xcd_rotated_{i}_projection")
+            multiple_projection_acquisition(f"6drv_rotated_{i}.mrc", f"6drv_rotated_{i}_projection")
         print("Projection acquistion done!")
 
 def plot_molecule(input_mrc_file):
@@ -1129,7 +1192,11 @@ if __name__ == "__main__":
     #test_Read_Potential()
     #CTF_envelope_function_tester()
     #multislice_phaseplate_tester()
-    #multiple_projection_acquisition("4xcd.mrc", "4xcd_topdown")
+    #multiple_projection_acquisition("4xcd_rotated_81.mrc", "4xcd_rotated_81_projection")
     #view_CTF("4xcd_topdown_D_0e+00.mrc")
     #plot_molecule("4xcd_rotated_1_projection_D_4e-08.mrc")
-    generate_all_projections()
+    #generate_all_projections(num_rotations=181)
+    #multiple_projection_acquisition_with_crossing_beams("6drv.mrc", "CTF_add_test")
+    #multiple_projection_acquisition("6drv.mrc", "CTF_stack_test")
+    view_CTF("CTF_add_test_D_0e+00.mrc")
+    view_CTF("CTF_stack_test_D_0e+00.mrc")
