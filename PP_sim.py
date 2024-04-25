@@ -1034,8 +1034,11 @@ def multiple_projection_acquisition(filename, base_save_name, num_projections=5)
         end_acq_time = time.time()
         print(f"Image Acquisition done! (Time {end_acq_time-start_acq_time}s)")
 
-def multiple_projection_acquisition_with_crossing_beams(filename, base_save_name, num_projections=5):
+def multiple_projection_acquisition_with_crossing_beams(filename, base_save_name, num_projections=5, D=None):
     mt.filename = filename
+
+    if D is not None and (len(D) != num_projections):
+        raise ValueError("The number of elements in the list D and num_projections must be the same size")
 
     mt.regenerate_Pots()
 
@@ -1057,6 +1060,9 @@ def multiple_projection_acquisition_with_crossing_beams(filename, base_save_name
     psi = mt.multislice(x, y, 256)
     end_mt_time = time.time()
     print(f"Multislice Complete! (Time: {end_mt_time - start_mt_time}s)")
+
+    if D is None:
+        D = [50e-9 + i * 50e-9 for i in range(num_projections)]
 
     for i in range(num_projections):
 
@@ -1080,19 +1086,20 @@ def multiple_projection_acquisition_with_crossing_beams(filename, base_save_name
 
         psi_after_pp = multislice_phaseplate(psi_with_noise, pp_pots, dz_vec, r)
 
-        D = -10e-9 + (5e-9*i)
+        """if D is None:
+            D = 50e-9 + i*50e-9"""
 
-        H_0 = mt.objective_transfer_function(k_four, mt.wavelength, 2e-3, D, 1)*CTF_envelope_function()
+        H_0 = mt.objective_transfer_function(k_four, mt.wavelength, 2e-3, D[i], 1)*CTF_envelope_function()
 
         image = np.abs(np.fft.ifft2(psi_after_pp * H_0))**2
 
         image = mt.normalize_and_rescale(image)
 
-        if os.path.exists(f"{base_save_name}_D_{D:.0e}.mrc"):
-            with mrcfile.open(f"{base_save_name}_D_{D:.0e}.mrc", "r+") as mrc:
+        if os.path.exists(f"{base_save_name}_D_{D[i]:.0e}.mrc"):
+            with mrcfile.open(f"{base_save_name}_D_{D[i]:.0e}.mrc", "r+") as mrc:
                 mrc.set_data(image)
         else:
-            with mrcfile.new(f"{base_save_name}_D_{D:.0e}.mrc") as mrc:
+            with mrcfile.new(f"{base_save_name}_D_{D[i]:.0e}.mrc") as mrc:
                 mrc.set_data(image)
 
         end_acq_time = time.time()
@@ -1198,5 +1205,6 @@ if __name__ == "__main__":
     #generate_all_projections(num_rotations=181)
     #multiple_projection_acquisition_with_crossing_beams("6drv.mrc", "CTF_add_test")
     #multiple_projection_acquisition("6drv.mrc", "CTF_stack_test")
-    view_CTF("CTF_add_test_D_0e+00.mrc")
-    view_CTF("CTF_stack_test_D_0e+00.mrc")
+    #view_CTF("CTF_add_test_D_0e+00.mrc")
+    #view_CTF("CTF_stack_test_D_0e+00.mrc")
+    generate_all_projections(num_rotations=181)
