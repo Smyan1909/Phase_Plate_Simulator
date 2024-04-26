@@ -970,8 +970,12 @@ def multislice_phaseplate_tester():
 
     plt.show()
 
-def multiple_projection_acquisition(filename, base_save_name, num_projections=5):
+def multiple_projection_acquisition(filename, base_save_name, num_projections=5, D=None):
     mt.filename = filename
+
+    if D is not None and (len(D) != num_projections):
+        raise ValueError("The number of elements in the list D and num_projections must be the same size")
+
 
     mt.regenerate_Pots()
 
@@ -993,6 +997,9 @@ def multiple_projection_acquisition(filename, base_save_name, num_projections=5)
     psi = mt.multislice(x, y, 256)
     end_mt_time = time.time()
     print(f"Multislice Complete! (Time: {end_mt_time - start_mt_time}s)")
+
+    if D is None:
+        D = [50e-9 + i * 50e-9 for i in range(num_projections)]
 
     for i in range(num_projections):
 
@@ -1016,19 +1023,19 @@ def multiple_projection_acquisition(filename, base_save_name, num_projections=5)
 
         psi_after_pp = multislice_phaseplate(psi_with_noise, pp_pots, dz_vec, r)
 
-        D = -10e-9 + (5e-9*i)
+        #D = -10e-9 + (5e-9*i)
 
-        H_0 = mt.objective_transfer_function(k_four, mt.wavelength, 2e-3, D, 1)*CTF_envelope_function()
+        H_0 = mt.objective_transfer_function(k_four, mt.wavelength, 2e-3, D[i], 1)*CTF_envelope_function()
 
         image = np.abs(np.fft.ifft2(psi_after_pp * H_0))**2
 
         image = mt.normalize_and_rescale(image)
 
-        if os.path.exists(f"{base_save_name}_D_{D:.0e}.mrc"):
-            with mrcfile.open(f"{base_save_name}_D_{D:.0e}.mrc", "r+") as mrc:
+        if os.path.exists(f"{base_save_name}_D_{D[i]:.1e}.mrc"):
+            with mrcfile.open(f"{base_save_name}_D_{D[i]:.1e}.mrc", "r+") as mrc:
                 mrc.set_data(image)
         else:
-            with mrcfile.new(f"{base_save_name}_D_{D:.0e}.mrc") as mrc:
+            with mrcfile.new(f"{base_save_name}_D_{D[i]:.1e}.mrc") as mrc:
                 mrc.set_data(image)
 
         end_acq_time = time.time()
