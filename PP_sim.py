@@ -9,10 +9,8 @@ from matplotlib.animation import FuncAnimation
 from mpl_toolkits.mplot3d import Axes3D
 import multislice as mt
 import scipy.spatial.distance as distance
-from scipy.integrate import simps
 import csv
 import os
-import multiprocessing
 
 
 pp_electrons = 200
@@ -970,7 +968,7 @@ def multislice_phaseplate_tester():
 
     plt.show()
 
-def multiple_projection_acquisition(filename, base_save_name, num_projections=5, D=None):
+def multiple_projection_acquisition(filename, base_save_name, num_projections=5, D=None, noise_level=0.2):
     mt.filename = filename
 
     if D is not None and (len(D) != num_projections):
@@ -1003,7 +1001,7 @@ def multiple_projection_acquisition(filename, base_save_name, num_projections=5,
 
     for i in range(num_projections):
 
-        psi_with_noise = mt.generate_noise(psi, rel_noise_level=0.2) #Change this value for more/less noise
+        psi_with_noise = mt.generate_noise(psi, rel_noise_level=noise_level) #Change this value for more/less noise
 
         print(f"Starting Image Acquisition iteration {i}")
         start_acq_time = time.time()
@@ -1180,13 +1178,13 @@ def view_CTF(input_mrc_file):
     plt.plot(np.linspace(0, len(ctf[row_indices, col_indices]), num=len(ctf[row_indices, col_indices])), ctf[row_indices, col_indices])
     plt.show()
 
-def generate_all_projections(num_rotations=21):
+def generate_all_projections(num_rotations=21, filename="6drv", num_projections=5, D=None, noise_level=0.2):
     for i in range(num_rotations):
         print(f"Starting Projection acquistion iteration {i} of {num_rotations}")
         if i == 0:
-            multiple_projection_acquisition("6drv.mrc", "6drv_projection")
+            multiple_projection_acquisition(f"{filename}.mrc", f"{filename}_projection", num_projections, D, noise_level)
         else:
-            multiple_projection_acquisition(f"6drv_rotated_{i}.mrc", f"6drv_rotated_{i}_projection")
+            multiple_projection_acquisition(f"{filename}_rotated_{i}.mrc", f"{filename}_rotated_{i}_projection", num_projections, D, noise_level)
         print("Projection acquistion done!")
 
 def plot_molecule(input_mrc_file):
@@ -1206,12 +1204,12 @@ if __name__ == "__main__":
     #test_Read_Potential()
     #CTF_envelope_function_tester()
     #multislice_phaseplate_tester()
-    #multiple_projection_acquisition("4xcd_rotated_81.mrc", "4xcd_rotated_81_projection")
+    #multiple_projection_acquisition("6drv.mrc", "6drv_noise_testing", noise_level=0.03)
     #view_CTF("4xcd_topdown_D_0e+00.mrc")
-    #plot_molecule("4xcd_rotated_1_projection_D_4e-08.mrc")
+    #plot_molecule("6drv_noise_testing_D_5.0e-08.mrc")
     #generate_all_projections(num_rotations=181)
     #multiple_projection_acquisition_with_crossing_beams("6drv.mrc", "CTF_add_test")
     #multiple_projection_acquisition("6drv.mrc", "CTF_stack_test")
     #view_CTF("CTF_add_test_D_0e+00.mrc")
     #view_CTF("CTF_stack_test_D_0e+00.mrc")
-    generate_all_projections(num_rotations=181)
+    generate_all_projections(num_rotations=181, noise_level=0.03)
