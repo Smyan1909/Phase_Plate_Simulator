@@ -33,11 +33,11 @@ padding_size = 50  # This is an example value, adjust as needed
 padded_pots = np.pad(pots, pad_width=padding_size, mode='constant', constant_values=0)
 
 def regenerate_Pots():
+    """
+        Function used to regenerate the new potentials when the filename is dynamically changed
+        :return: Nothing
+        """
     global pots
-    """
-    Function used to regenerate the new potentials when the filename is dynamically changed
-    :return: Nothing
-    """
     with mrcfile.open(filename) as mrc:
         pots = mrc.data
 
@@ -73,7 +73,7 @@ def calculate_proj_pot(V, nslice):
             end_z = len(V)
 
 
-        integrated_values = (voxelsize*angstrom)*np.sum(V[start_z:end_z, :, :], axis=0)
+        integrated_values = (voxelsize*angstrom*dz)*np.sum(V[start_z:end_z, :, :], axis=0)
         V_z.append(integrated_values)
 
     return V_z, dz
@@ -299,7 +299,7 @@ def freq_analysis(focal_length=4e-3):
 
 def ideal_image():
 
-    V, dz = calculate_proj_pot(V=pots, nslice=200)
+    V, dz = calculate_proj_pot(V=pots, nslice=256)
 
     plt.imshow(np.sum(V, axis=0), cmap="gray")
     plt.xlabel("x [Å]")
