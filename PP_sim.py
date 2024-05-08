@@ -1219,7 +1219,7 @@ def generate_all_projections(num_rotations=21, filename="6drv", num_projections=
         if i == 0:
             multiple_projection_acquisition(f"{filename}.mrc", f"{filename}_projection", num_projections, D, noise_level)
         else:
-            multiple_projection_acquisition(f"{filename}_rotated_{i+180}.mrc", f"{filename}_rotated_{i+180}_projection", num_projections, D, noise_level)
+            multiple_projection_acquisition(f"{filename}_rotated_{i}.mrc", f"{filename}_rotated_{i}_projection", num_projections, D, noise_level)
         print("Projection acquistion done!")
 
 def plot_molecule(input_mrc_file):
