@@ -1193,8 +1193,9 @@ def view_CTF(input_mrc_folder):
     plt.xlabel("Spatial Frequency [1/Å]")
     plt.ylabel("CTF")
     plt.title("CTF Horizontal D=0nm")
-    center_row, center_col = 127, 127
 
+    """center_row, center_col = 127, 127
+    
     # Determine the maximum offset from the center to the top-right corner
     # Since the array is square and indexing starts at 0, top-right is at [0, 255]
     max_offset = min(center_row, 255 - center_col)  # This is the maximum number of steps you can take diagonally
@@ -1208,6 +1209,16 @@ def view_CTF(input_mrc_folder):
     plt.figure(3)
     #plt.plot(np.linspace(0, len(ctf[row_indices, col_indices]), num=len(ctf[row_indices, col_indices])), ctf[row_indices, col_indices])
     plt.plot(frequencies2, ctf[row_indices, col_indices])
+    plt.xlabel("Spatial Frequency [1/Å]")
+    plt.ylabel("CTF")
+    plt.title("CTF Diagonal D=0nm")"""
+
+
+
+    ctf_diag = np.diag(ctf)
+    frequencies3 = np.linspace(0, 0.5, len(ctf_diag[len(ctf_diag)//2:]))
+    plt.figure(3)
+    plt.plot(frequencies3, ctf_diag[len(ctf_diag)//2:])
     plt.xlabel("Spatial Frequency [1/Å]")
     plt.ylabel("CTF")
     plt.title("CTF Diagonal D=0nm")
