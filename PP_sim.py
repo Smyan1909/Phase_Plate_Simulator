@@ -52,11 +52,13 @@ class Electron:
         self.net_force = None  # Added attribute for net force
         self.mass = mass
 
-    def accelerate(self, electric_field, magnetic_field):
-
-        pass
-
     def rk4_integrator(self, time_step, all_electrons):
+        """
+        Performs one step of RK4
+        :param time_step: The time step of one RK4 step
+        :param all_electrons: All the other electrons that induce forces on the current electron
+        :return: Nothing
+        """
         dt = time_step
 
         k1_v = dt*(self.total_force(all_electrons, self.position, self.velocity)/m_e)
@@ -80,11 +82,22 @@ class Electron:
             self.velocity = np.array([pp_electron_velocity, 0, 0])
 
     def Euler(self, time_step, all_electrons):
-
+        """
+        Performs one step of Eulers method
+        :param time_step: The time step of one Euler step
+        :param all_electrons: All the other electrons that induce forces on the current electron
+        :return: Nothing
+        """
         self.velocity += time_step*(self.total_force(all_electrons, self.position, self.velocity)/m_e)
         self.position += time_step*self.velocity
 
     def colomb_force(self, all_electrons, x):
+        """
+        Calculates the Colomb forces that all electrons have on one electron
+        :param all_electrons: All the other electrons that induce forces on the current electron
+        :param x: Position of the current electron
+        :return: Sum of all Colomb forces on the current electron
+        """
         colomb_forces = np.zeros((len(all_electrons), 3))  # Initialize forces array
         for i, other in enumerate(all_electrons):
             if other != self:
@@ -105,9 +118,20 @@ class Electron:
         return np.sum(self.colomb_force_matrix, axis=0)
 
     def keV_to_ms (self):
+        """
+        Calculates the electron velocity from the electron energy
+        :return: The velocity of the electron
+        """
         return math.sqrt(2 * self.keV *1000*e/ m_e)
 
-    def magnetic_force(self, all_electrons, x, v):  # Biot–Savart law
+    def magnetic_force(self, all_electrons, x, v):
+        """
+         Biot–Savart law
+        :param all_electrons: All the other electrons that induce forces on the current electron
+        :param x: Position of the current electron
+        :param v: The current electron velocity
+        :return: The sum of the magnetic forces on the current electron
+        """
         magnetic_forces = np.zeros((len(all_electrons), 3))
         for i, other in enumerate(all_electrons):
             if other != self:
@@ -130,23 +154,16 @@ class Electron:
         return np.sum(self.magnetic_force_matrix, axis=0)
 
 
-    def relative_speed(self, beam_electrons): # måste ev fact checkas med teorin
-
-        if(self.keV==200):
-
-            gamma = (1000*self.keV/(m_e*c**2))+1  # Lorentz factor
-
-            self.velocity = c * math.sqrt(1-(1/(1+gamma**2)))
-
-
     def total_force(self, all_electrons, x, v):
+        """
+        Calculates the total forces acting on the current electron
+        :param all_electrons: All the other electrons that induce forces on the current electron
+        :param x: Position of the current electron
+        :param v: The current electron velocity
+        :return: The sum of Colomb forces and magnetic forces on the current electron
+        """
         return self.colomb_force(all_electrons=all_electrons, x=x) + self.magnetic_force(all_electrons=all_electrons, x=x, v=v)
 
-
-#Jag har optimerat potential beräkningen så att nu går det bara igenom en loop istället för 3 (Smyan)
-#Den gör samma beräkning men med vectorer och meshgrid istället för index beräkning som använder sig
-#av C bibliotek inuti numpy
-#Calculate Potential
 def calculate_potential(elec_array, step_size, start_range, stop_range):
 
     x_ = np.arange(start_range, stop_range+step_size, step_size)
