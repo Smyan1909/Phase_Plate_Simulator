@@ -11,6 +11,7 @@ import multislice as mt
 import scipy.spatial.distance as distance
 import csv
 import os
+import glob
 
 
 pp_electrons = 200
@@ -1147,22 +1148,34 @@ def CTF_envelope_function_tester(size=256, sigma=128):
     plt.legend(loc = 'upper left')
     plt.show()
 
-def view_CTF(input_mrc_file):
-    with mrcfile.open(input_mrc_file) as mrc:
-        image = mrc.data
+def view_CTF(input_mrc_folder):
+    folder_path = input_mrc_folder
+    mrc_files = glob.glob(os.path.join(folder_path, "*.mrc"))
+    ctf_array = []
+    for mrc_file in mrc_files:
+        with mrcfile.open(mrc_file) as mrc:
+            image = mrc.data
+        image_fft = np.clip(np.abs(np.fft.fft2(image)), 0, np.percentile(np.abs(np.fft.fft2(image)), 99))
 
-    image_fft = np.clip(np.abs(np.fft.fft2(image)), 0, np.percentile(np.abs(np.fft.fft2(image)), 99))
+        ctf_array.append(np.fft.fftshift(image_fft))
 
-    ctf = np.fft.fftshift(image_fft)
 
+    stacked_ctf = np.array(ctf_array)
+
+    ctf = np.mean(stacked_ctf, axis=0)
     plt.figure(1)
     plt.imshow(ctf, cmap="gray")
 
     ctf = (ctf - np.min(ctf))/(np.max(ctf) - np.min(ctf))
 
-    plt.figure(2)
-    plt.plot(np.linspace(0, len(ctf[128, 128:255]), num=len(ctf[128, 128:255])), ctf[128, 128:255])
+    frequencies1 = np.linspace(0, 0.5, len(ctf[128, 128:255]))
 
+    plt.figure(2)
+    #plt.plot(np.linspace(0, len(ctf[128, 128:255]), num=len(ctf[128, 128:255])), ctf[128, 128:255])
+    plt.plot(frequencies1, ctf[128, 128:255])
+    plt.xlabel("Spatial Frequency [1/Å]")
+    plt.ylabel("CTF")
+    plt.title("CTF Horizontal D=0nm")
     center_row, center_col = 127, 127
 
     # Determine the maximum offset from the center to the top-right corner
@@ -1173,9 +1186,14 @@ def view_CTF(input_mrc_file):
     row_indices = np.arange(center_row, center_row - max_offset - 1, -1)
     col_indices = np.arange(center_col, center_col + max_offset + 1)
 
+    frequencies2 = np.linspace(0, 0.5, len(ctf[row_indices, col_indices]))
 
     plt.figure(3)
-    plt.plot(np.linspace(0, len(ctf[row_indices, col_indices]), num=len(ctf[row_indices, col_indices])), ctf[row_indices, col_indices])
+    #plt.plot(np.linspace(0, len(ctf[row_indices, col_indices]), num=len(ctf[row_indices, col_indices])), ctf[row_indices, col_indices])
+    plt.plot(frequencies2, ctf[row_indices, col_indices])
+    plt.xlabel("Spatial Frequency [1/Å]")
+    plt.ylabel("CTF")
+    plt.title("CTF Diagonal D=0nm")
     plt.show()
 
 def generate_all_projections(num_rotations=21, filename="6drv", num_projections=5, D=None, noise_level=0.2):
@@ -1184,7 +1202,7 @@ def generate_all_projections(num_rotations=21, filename="6drv", num_projections=
         if i == 0:
             multiple_projection_acquisition(f"{filename}.mrc", f"{filename}_projection", num_projections, D, noise_level)
         else:
-            multiple_projection_acquisition(f"{filename}_rotated_{i}.mrc", f"{filename}_rotated_{i}_projection", num_projections, D, noise_level)
+            multiple_projection_acquisition(f"{filename}_rotated_{i+180}.mrc", f"{filename}_rotated_{i+180}_projection", num_projections, D, noise_level)
         print("Projection acquistion done!")
 
 def plot_molecule(input_mrc_file):
@@ -1196,20 +1214,6 @@ def plot_molecule(input_mrc_file):
 
 #Write code to run here for encapsulation (SMYAN)
 if __name__ == "__main__":
-    #tester_1()
-    #pp_stationary()
-    #find_Potential_CTF()
-    #beam_electron_implementation()
-    #create_Potential_Maps()
-    #test_Read_Potential()
-    #CTF_envelope_function_tester()
-    #multislice_phaseplate_tester()
-    #multiple_projection_acquisition("6drv.mrc", "6drv_noise_testing", noise_level=0.03)
-    #view_CTF("4xcd_topdown_D_0e+00.mrc")
-    #plot_molecule("6drv_noise_testing_D_5.0e-08.mrc")
-    #generate_all_projections(num_rotations=181)
-    #multiple_projection_acquisition_with_crossing_beams("6drv.mrc", "CTF_add_test")
-    #multiple_projection_acquisition("6drv.mrc", "CTF_stack_test")
-    #view_CTF("CTF_add_test_D_0e+00.mrc")
-    #view_CTF("CTF_stack_test_D_0e+00.mrc")
-    generate_all_projections(num_rotations=181, noise_level=0.03)
+    #generate_all_projections(num_rotations=90, noise_level=0.03, D=[-10e-9, -5e-9, 0, 5e-9, 10e-9])
+    #multiple_projection_acquisition("6drv_rotated_270.mrc", "6drv_rotated_270_projection", D=[-10e-9, -5e-9, 0, 5e-9, 10e-9], noise_level=0.03)
+    view_CTF("Files_For_CTF")
