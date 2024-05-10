@@ -1185,11 +1185,14 @@ def view_CTF(input_mrc_folder):
 
     ctf = (ctf - np.min(ctf))/(np.max(ctf) - np.min(ctf))
 
-    frequencies1 = np.linspace(0, 0.5, len(ctf[128, 128:255]))
+
+
+    frequencies1 = np.fft.fftshift(np.fft.fftfreq(len(ctf[128, :255]), d=angstrom)) * 1e-10
+
 
     plt.figure(2)
     #plt.plot(np.linspace(0, len(ctf[128, 128:255]), num=len(ctf[128, 128:255])), ctf[128, 128:255])
-    plt.plot(frequencies1, ctf[128, 128:255])
+    plt.plot(frequencies1[128:255], ctf[128, 128:255])
     plt.xlabel("Spatial Frequency [1/Å]")
     plt.ylabel("CTF")
     plt.title("CTF Horizontal D=0nm")
@@ -1213,12 +1216,11 @@ def view_CTF(input_mrc_folder):
     plt.ylabel("CTF")
     plt.title("CTF Diagonal D=0nm")"""
 
-
-
     ctf_diag = np.diag(ctf)
-    frequencies3 = np.linspace(0, 0.5, len(ctf_diag[len(ctf_diag)//2:]))
+    #frequencies2 = np.linspace(0, 0.5, len(ctf_diag[len(ctf_diag)//2:]))
+    frequencies2 = np.fft.fftshift(np.fft.fftfreq(len(ctf_diag), d=angstrom*1/np.sqrt(2))) * 1e-10
     plt.figure(3)
-    plt.plot(frequencies3, ctf_diag[len(ctf_diag)//2:])
+    plt.plot(frequencies2[len(frequencies2)//2:], ctf_diag[len(ctf_diag)//2:])
     plt.xlabel("Spatial Frequency [1/Å]")
     plt.ylabel("CTF")
     plt.title("CTF Diagonal D=0nm")
