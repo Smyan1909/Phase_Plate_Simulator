@@ -11,7 +11,7 @@ program.
    * Matplotlib 3.8.2
    * mrcfile 1.5.0
    * Scipy 1.12.0
-   * Jupyter (Latest Version)
+   * Jupyter (Latest Version) \
    EMAN 2.99.47 must also be installed to rotate the molecule and generate the detector noise.
 2. Run the MATLAB script from Shang and Sigworth (https://www.sciencedirect.com/science/article/pii/S1047847712001244?via%3Dihub) after acquiring the appropriate pdb file to acquire the electron density map of the macromolecule. Alternatively use the `pdb2mrc.py` program from EMAN2 to perform the same procedure. Note that the boxsize of the mrcfile must be 256 × 256 × 256.
 3. Modify the parameters accordingly and run the `Generate_Rotations.ipynb` file in a jupyter notebook and acquire the different rotations of the macromolecule. Make sure that the program is run from the top to the bottom as the run order matters for correct execution of the program. It is also crucial that the names of the rotated molecules are chosen in this specific way: `{original molecule name}_rotated_{i}` where the original molecule name is the name of the original mrc file acquired from the pdb file and i is the number of the rotation. This means that for each rotation generated i should be incremented by one. The easiest way to run this correctly would be to follow the example already present in the jupyter notebook file.
