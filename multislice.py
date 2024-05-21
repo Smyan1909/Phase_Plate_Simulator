@@ -301,10 +301,10 @@ def ideal_image():
 
     V, dz = calculate_proj_pot(V=pots, nslice=256)
 
-    plt.imshow(np.sum(V, axis=0), cmap="gray")
+    """plt.imshow(np.sum(V, axis=0), cmap="gray")
     plt.xlabel("x [Å]")
     plt.ylabel("y [Å]")
-    plt.show()
+    plt.show()"""
 
     return np.sum(V, axis=0)
 if __name__ == "__main__":

@@ -908,7 +908,7 @@ def fourier_ring_correlation(image1, image2):
 
 
     # Calculate the Fourier Ring Correlation for each ring
-    frc = np.abs(num) / np.sqrt(den1 * den2)
+    frc = num / np.sqrt(den1 * den2)
     r_vec = np.arange(image1.shape[0] // 2)
 
     return frc, r_vec
@@ -1165,7 +1165,7 @@ def CTF_envelope_function_tester(size=256, sigma=128):
     plt.legend(loc = 'upper left')
     plt.show()
 
-def view_CTF(input_mrc_folder):
+def view_CTF(input_mrc_folder, defocus=63e-9, D_for_plot="0"):
     folder_path = input_mrc_folder
     mrc_files = glob.glob(os.path.join(folder_path, "*.mrc"))
     ctf_array = []
@@ -1192,38 +1192,27 @@ def view_CTF(input_mrc_folder):
 
     plt.figure(2)
     #plt.plot(np.linspace(0, len(ctf[128, 128:255]), num=len(ctf[128, 128:255])), ctf[128, 128:255])
-    plt.plot(frequencies1[128:255], ctf[128, 128:255])
+    plt.plot(frequencies1[128:255], ctf[128, 128:255], color='b', label="CTF from image")
+    plt.plot(frequencies1[128:255], np.abs(np.sin(mt.objective_transfer_function(frequencies1[128:255]/1e-10, mt.wavelength, 2e-3, defocus)))-0.85, color = 'r',
+             label = "Estimated weak phase approximation")
     plt.xlabel("Spatial Frequency [1/Å]")
     plt.ylabel("CTF")
-    plt.title("CTF Horizontal D=0nm")
-
-    """center_row, center_col = 127, 127
-    
-    # Determine the maximum offset from the center to the top-right corner
-    # Since the array is square and indexing starts at 0, top-right is at [0, 255]
-    max_offset = min(center_row, 255 - center_col)  # This is the maximum number of steps you can take diagonally
-
-    # Compute the diagonal indices
-    row_indices = np.arange(center_row, center_row - max_offset - 1, -1)
-    col_indices = np.arange(center_col, center_col + max_offset + 1)
-
-    frequencies2 = np.linspace(0, 0.5, len(ctf[row_indices, col_indices]))
-
-    plt.figure(3)
-    #plt.plot(np.linspace(0, len(ctf[row_indices, col_indices]), num=len(ctf[row_indices, col_indices])), ctf[row_indices, col_indices])
-    plt.plot(frequencies2, ctf[row_indices, col_indices])
-    plt.xlabel("Spatial Frequency [1/Å]")
-    plt.ylabel("CTF")
-    plt.title("CTF Diagonal D=0nm")"""
+    plt.legend()
+    plt.title(f"CTF Horizontal D={D_for_plot}nm")
 
     ctf_diag = np.diag(ctf)
-    #frequencies2 = np.linspace(0, 0.5, len(ctf_diag[len(ctf_diag)//2:]))
+
     frequencies2 = np.fft.fftshift(np.fft.fftfreq(len(ctf_diag), d=angstrom*1/np.sqrt(2))) * 1e-10
     plt.figure(3)
-    plt.plot(frequencies2[len(frequencies2)//2:], ctf_diag[len(ctf_diag)//2:])
+    plt.plot(frequencies2[len(frequencies2)//2:], ctf_diag[len(ctf_diag)//2:], label="CTF from image")
+    plt.plot(frequencies2[len(frequencies2)//2:], np.abs(
+        np.sin(mt.objective_transfer_function(frequencies2[len(frequencies2)//2:] / 1e-10, mt.wavelength, 2e-3, defocus))) - 0.85,
+             color='r',
+             label="Estimated weak phase approximation")
     plt.xlabel("Spatial Frequency [1/Å]")
     plt.ylabel("CTF")
-    plt.title("CTF Diagonal D=0nm")
+    plt.legend()
+    plt.title(f"CTF Diagonal D={D_for_plot}nm")
     plt.show()
 
 def generate_all_projections(num_rotations=21, filename="6drv", num_projections=5, D=None, noise_level=0.2):
@@ -1235,6 +1224,88 @@ def generate_all_projections(num_rotations=21, filename="6drv", num_projections=
             multiple_projection_acquisition(f"{filename}_rotated_{i}.mrc", f"{filename}_rotated_{i}_projection", num_projections, D, noise_level)
         print("Projection acquistion done!")
 
+
+def effect_of_stacking(filename):
+    mt.filename = filename
+
+    mt.regenerate_Pots()
+
+    x, y = mt.generate_grid(mt.pots)
+
+    kx, ky = np.meshgrid(np.fft.fftfreq(len(x), d=(voxelsize * angstrom)),
+                         np.fft.fftfreq(len(y), d=(voxelsize * angstrom)))
+    k_four = np.sqrt(kx ** 2 + ky ** 2)
+
+    dk, start_k, end_k = mt.freq_analysis()
+
+    rx, ry = np.meshgrid(np.fft.fftfreq(len(x), d=dk),
+                         np.fft.fftfreq(len(y), d=dk))
+
+    r = np.sqrt(rx ** 2 + ry ** 2)
+
+    print("Performing Multislice ... ")
+    start_mt_time = time.time()
+    psi = mt.multislice(x, y, 256)
+    end_mt_time = time.time()
+    print(f"Multislice Complete! (Time: {end_mt_time - start_mt_time}s)")
+
+    pot_num1 = random.randint(0, 21)
+    pot_num2 = random.randint(0, 21)
+
+    pp_beam1, z_pos_1 = read_Potential_Map(f"PP_Pot_map_{pot_num1}.txt", f"z_pos_{pot_num1}.txt")
+    pp_beam2, z_pos_2 = read_Potential_Map(f"PP_Pot_map_{pot_num2}.txt", f"z_pos_{pot_num2}.txt")
+
+    pp_beam2 = np.rot90(pp_beam2, axes=(1, 2))
+
+    dz_vec = z_pos_1
+
+    dz_vec_stack = np.concatenate((z_pos_1, z_pos_2))
+
+    pp_pots = np.vstack((pp_beam1, pp_beam2))
+
+    pp_pots -= np.min(pp_pots)
+
+    psi_after_pp1 = multislice_phaseplate(psi, pp_pots, dz_vec_stack, r)
+
+    pp_pots_cross = pp_beam1 + pp_beam2
+
+    pp_pots_cross -= np.min(pp_pots_cross)
+
+    psi_after_pp2 = multislice_phaseplate(psi, pp_pots_cross, dz_vec, r)
+
+    dz_vec_stack = np.reshape(dz_vec_stack, (len(dz_vec_stack), 1, 1))
+
+    psi_after_pp3 = np.fft.ifftshift(np.fft.fftshift(np.fft.fft2(psi)) * np.sum(pp_pots*dz_vec_stack, axis=0))
+
+    image_stack = np.abs(np.fft.ifft2(psi_after_pp1 * mt.objective_transfer_function(k_four, mt.wavelength, 2e-3, 0)))**2
+    image_cross = np.abs(
+        np.fft.ifft2(psi_after_pp2 * mt.objective_transfer_function(k_four, mt.wavelength, 2e-3, 0))) ** 2
+
+    image_single = np.abs(np.fft.ifft2(psi_after_pp3 * mt.objective_transfer_function(k_four, mt.wavelength, 2e-3, 0)))**2
+
+    reference = mt.ideal_image()
+
+    frc_stack, r_vec1 = fourier_ring_correlation(image_stack, reference)
+    frc_cross, r_vec2 = fourier_ring_correlation(image_cross, reference)
+    frc_single, r_vec3 = fourier_ring_correlation(image_single, reference)
+
+    radius_vals = np.linspace(0, 0.5, num=len(r_vec1))
+
+    plt.figure()
+    plt.subplot(1,3,1)
+    plt.plot(radius_vals, frc_stack)
+    plt.title("Stacked")
+    plt.xlabel("Spatial Frequency [1/Å]")
+    plt.subplot(1,3,2)
+    plt.plot(radius_vals, frc_cross)
+    plt.title("Added")
+    plt.xlabel("Spatial Frequency [1/Å]")
+    plt.subplot(1, 3, 3)
+    plt.plot(radius_vals, frc_single)
+    plt.title("Single Slice")
+    plt.xlabel("Spatial Frequency [1/Å]")
+    plt.show()
+
 def plot_molecule(input_mrc_file):
     with mrcfile.open(input_mrc_file) as mrc:
         image = mrc.data
@@ -1242,8 +1313,9 @@ def plot_molecule(input_mrc_file):
     plt.imshow(image, cmap="gray")
     plt.show()
 
-#Write code to run here for encapsulation (SMYAN)
+#Write code to run here for encapsulation
 if __name__ == "__main__":
     #generate_all_projections(num_rotations=90, noise_level=0.03, D=[-10e-9, -5e-9, 0, 5e-9, 10e-9])
     #multiple_projection_acquisition("6drv_rotated_270.mrc", "6drv_rotated_270_projection", D=[-10e-9, -5e-9, 0, 5e-9, 10e-9], noise_level=0.03)
-    view_CTF("Files_For_CTF")
+    #view_CTF("CTF_files_-10", 53e-9, "-10")
+    effect_of_stacking("6drv.mrc")
