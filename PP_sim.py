@@ -165,7 +165,14 @@ class Electron:
         return self.colomb_force(all_electrons=all_electrons, x=x) + self.magnetic_force(all_electrons=all_electrons, x=x, v=v)
 
 def calculate_potential(elec_array, step_size, start_range, stop_range):
-
+    """
+    Calculates the potential contribution from all electrons in the defined volume
+    :param elec_array: Array containing the electrons
+    :param step_size: The size of each step
+    :param start_range: Starting point of the defined volume
+    :param stop_range: Ending point of the defined volume
+    :return: The potential in the defined volume and slice thickness
+    """
     x_ = np.arange(start_range, stop_range+step_size, step_size)
     y_ = np.arange(start_range, stop_range+step_size, step_size)
     #z_ = np.arange(start_range, stop_range+step_size, step_size)
@@ -184,12 +191,19 @@ def calculate_potential(elec_array, step_size, start_range, stop_range):
         Vp += k * (electron.charge / dist)
 
 
-
     return Vp, dz
 
 
 def calculate_potential_slice(elec_array, step_size, start_range, stop_range, z_val):
-
+    """
+    Calculates the potential contribution from all electrons in a slice of the defined volume
+    :param elec_array: Array containing the electrons
+    :param step_size: The size of each step
+    :param start_range: Starting point of the slice
+    :param stop_range: Ending point of the slice
+    :param z_val: The z position of the slice
+    :return: The potential of the slice
+    """
     x_ = np.arange(start_range, stop_range + step_size, step_size)
     y_ = np.arange(start_range, stop_range + step_size, step_size)
 
@@ -207,6 +221,12 @@ def calculate_potential_slice(elec_array, step_size, start_range, stop_range, z_
 
     return V_slice
 def calculate_potential_fast(elec_array, step_size):
+    """
+    A computationally faster version of the calculate_potential function
+    :param elec_array: Array containing the electrons
+    :param step_size: The size of each step
+    :return: The potential in the defined volume and slice thickness
+    """
     # Generate grid points
     x_ = np.linspace(-x_range, x_range, 100)
     y_ = np.linspace(-y_range, y_range, 100)
@@ -237,6 +257,13 @@ def calculate_potential_fast(elec_array, step_size):
     return Vp, dz
 
 def update(num, all_electrons, dt, ax):
+    """
+    An update function to perform one frame update in an animation
+    :param num:
+    :param all_electrons: All electrons that are included in the animation
+    :param dt: Time step
+    :param ax: The figure object to animate
+    """
     ax.set_xlim([-x_range, x_range])
     ax.set_ylim([-y_range, y_range])
     ax.set_zlim([-z_range, z_range])
@@ -442,7 +469,12 @@ def pp_stationary():
 
 
 def exitwave_pos(num_points, psi):
-
+    """
+    Calulates the probability distribution from the exit wave function
+    :param num_points: One sample point
+    :param psi: Exit wave function
+    :return: One sampled point from the probability distribution of the exit wave
+    """
 
     #psi_magnitude = np.abs(np.fft.fft2(psi))**2
     psi_magnitude = np.abs(np.fft.fftshift(np.fft.fft2(psi)))**2
@@ -854,10 +886,14 @@ def beam_electron_implementation():
 
     plt.show()
 def MSE(ideal, image1):
-
+    """
+    Calculates the mean squared error of an image
+    :param ideal: Ideal image
+    :param image1: Image
+    :return: Mean squared error of the image
+    """
     gray_scaled_ideal = mt.normalize_and_rescale(ideal)
     gray_scaled_im = mt.normalize_and_rescale(image1)
-
     squared_error = 0
 
     for i in range(image1.shape[0]):
@@ -869,15 +905,24 @@ def MSE(ideal, image1):
     return mean_squared_error
 
 def PSNR(ideal, image1):
-
-
+    """
+    Calculates the peak-signal-to-noise-ratio of an image
+    :param ideal: Ideal image
+    :param image1: Image
+    :return: Peak-signal-to-noise-ratio of the image
+    """
     MAX_I = 255
-
     peak_signal_to_noise_ratio = 10 * np.log10((MAX_I**2)/MSE(ideal, image1))
 
     return peak_signal_to_noise_ratio
 
 def fourier_ring_correlation(image1, image2):
+    """
+    Calculates the fourier ring correlation of two images
+    :param image1: Image one
+    :param image2: Image two
+    :return: The fourier ring correlation curve and the corresponding spatial frequency vector
+    """
     # Check if both images have the same shape
     if image1.shape != image2.shape:
         raise ValueError("Both images must have the same dimensions.")
@@ -914,6 +959,14 @@ def fourier_ring_correlation(image1, image2):
     return frc, r_vec
 
 def multislice_phaseplate(psi, pp_pots, dz_vec, spatial_freq):
+    """
+    Performs multislice through the phase plate
+    :param psi: Exit wave function
+    :param pp_pots: Phase plate potential
+    :param dz_vec: Delta z positions
+    :param spatial_freq: Spatial frequencies
+    :return: The non shifted fourier transformed exit wave after it has passed through the phase plate
+    """
 
     psi_ft = np.fft.fftshift(np.fft.fft2(psi))
 
@@ -987,6 +1040,16 @@ def multislice_phaseplate_tester():
     plt.show()
 
 def multiple_projection_acquisition(filename, base_save_name, num_projections=5, D=None, noise_level=0.2):
+    """
+    Aquires different projections of an image with defocus and noise. Its important that the length of D and num_projections
+    are the same length
+    :param filename: The filename with .mrc extension to perform acquisition on
+    :param base_save_name: The save filename with .mrc extension
+    :param num_projections: Number of projections acquired
+    :param D: Defocus value vector
+    :param noise_level: Level of added noise
+    :return: Projections of an image with defous and noise
+    """
     mt.filename = filename
 
     if D is not None and (len(D) != num_projections):
@@ -1058,6 +1121,14 @@ def multiple_projection_acquisition(filename, base_save_name, num_projections=5,
         print(f"Image Acquisition done! (Time {end_acq_time-start_acq_time}s)")
 
 def multiple_projection_acquisition_with_crossing_beams(filename, base_save_name, num_projections=5, D=None):
+    """
+    Tester function for projection acquisition with crossing beams instead of stacked
+    :param filename:
+    :param base_save_name:
+    :param num_projections:
+    :param D:
+    :return:
+    """
     mt.filename = filename
 
     if D is not None and (len(D) != num_projections):
@@ -1129,6 +1200,12 @@ def multiple_projection_acquisition_with_crossing_beams(filename, base_save_name
         print(f"Image Acquisition done! (Time {end_acq_time-start_acq_time}s)")
 
 def CTF_envelope_function(size=256, sigma=128):
+    """
+    Creates the envelope function to be applied to the CTF
+    :param size: Size of CTF in pixels
+    :param sigma: Standard deviation in pixels
+    :return: A Gaussian filter that mimics an envelope function
+    """
 
     filter = np.zeros((size, size))
 
@@ -1166,6 +1243,12 @@ def CTF_envelope_function_tester(size=256, sigma=128):
     plt.show()
 
 def view_CTF(input_mrc_folder, defocus=63e-9, D_for_plot="0"):
+    """
+    Plots the spectral averaged CTF in 2D, one in horizontal direction and one in vertical direction
+    :param input_mrc_folder: Folder of .mrc files that were acquired with the same defocus value
+    :param defocus: The defocus used for plotting a weak phase estimation
+    :param D_for_plot: Defocus used for the title of the plots
+    """
     folder_path = input_mrc_folder
     mrc_files = glob.glob(os.path.join(folder_path, "*.mrc"))
     ctf_array = []
@@ -1216,6 +1299,14 @@ def view_CTF(input_mrc_folder, defocus=63e-9, D_for_plot="0"):
     plt.show()
 
 def generate_all_projections(num_rotations=21, filename="6drv", num_projections=5, D=None, noise_level=0.2):
+    """
+    Generates all the projections of a protein
+    :param num_rotations: Number of rotations
+    :param filename: The original protein filename without .mrc extension
+    :param num_projections: Number of projections for each rotation
+    :param D: List of defocus value
+    :param noise_level: The added structural noise level to the image
+    """
     for i in range(num_rotations):
         print(f"Starting Projection acquistion iteration {i} of {num_rotations}")
         if i == 0:
@@ -1226,6 +1317,7 @@ def generate_all_projections(num_rotations=21, filename="6drv", num_projections=
 
 
 def effect_of_stacking(filename):
+
     mt.filename = filename
 
     mt.regenerate_Pots()
@@ -1307,11 +1399,16 @@ def effect_of_stacking(filename):
     plt.show()
 
 def plot_molecule(input_mrc_file):
+    """
+    Plots 2D projection of the specified .mrc file
+    :param input_mrc_file: The name of a 2D .mrc file
+    """
     with mrcfile.open(input_mrc_file) as mrc:
         image = mrc.data
 
     plt.imshow(image, cmap="gray")
     plt.show()
+
 
 #Write code to run here for encapsulation
 if __name__ == "__main__":
