@@ -972,7 +972,7 @@ def multislice_phaseplate(psi, pp_pots, dz_vec, spatial_freq):
 
     for i in range(len(dz_vec)):
         propagator = mt.fresnel_propagator(spatial_freq, dz_vec[i])
-        transmission_function = np.exp(-1j * pp_pots[i, :, :] * dz_vec[i] * mt.sigma_e)
+        transmission_function = np.exp(-1j * pp_pots[i, :, :]*dz_vec[i] * mt.sigma_e)
 
         psi_ft = np.fft.ifft2(propagator * np.fft.fft2(psi_ft * transmission_function))
 
@@ -1355,7 +1355,12 @@ def effect_of_stacking(filename):
 
     pp_pots = np.vstack((pp_beam1, pp_beam2))
 
+    dz_vec_stack = np.reshape(dz_vec_stack, (len(dz_vec_stack), 1, 1))
+
+    pp_proj = (np.sum(pp_pots * dz_vec_stack, axis=0) - np.min(np.sum(pp_pots * dz_vec_stack, axis=0)))
+
     pp_pots -= np.min(pp_pots)
+
 
     psi_after_pp1 = multislice_phaseplate(psi, pp_pots, dz_vec_stack, r)
 
@@ -1365,9 +1370,6 @@ def effect_of_stacking(filename):
 
     psi_after_pp2 = multislice_phaseplate(psi, pp_pots_cross, dz_vec, r)
 
-    dz_vec_stack = np.reshape(dz_vec_stack, (len(dz_vec_stack), 1, 1))
-
-    pp_proj = (np.sum(pp_pots*dz_vec_stack, axis=0)-np.min(np.sum(pp_pots*dz_vec_stack, axis=0)))
 
     psi_after_pp3 = np.fft.ifftshift(np.fft.fftshift(np.fft.fft2(psi)) * pp_proj)
 
