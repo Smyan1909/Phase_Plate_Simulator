@@ -972,7 +972,8 @@ def multislice_phaseplate(psi, pp_pots, dz_vec, spatial_freq):
 
     for i in range(len(dz_vec)):
         propagator = mt.fresnel_propagator(spatial_freq, dz_vec[i])
-        transmission_function = np.exp(-1j * pp_pots[i, :, :]*dz_vec[i] * mt.sigma_e)
+        proj_pot = (pp_pots[i, :, :]*dz_vec[i]) - np.min(pp_pots[i, :, :]*dz_vec[i]) #Slice wise normalization
+        transmission_function = np.exp(-1j * proj_pot * mt.sigma_e)
 
         psi_ft = np.fft.ifft2(propagator * np.fft.fft2(psi_ft * transmission_function))
 
@@ -1098,7 +1099,7 @@ def multiple_projection_acquisition(filename, base_save_name, num_projections=5,
 
         pp_pots = np.vstack((pp_beam1, pp_beam2))
 
-        pp_pots -= np.min(pp_pots)
+        #pp_pots -= np.min(pp_pots)
 
         psi_after_pp = multislice_phaseplate(psi_with_noise, pp_pots, dz_vec, r)
 
@@ -1176,7 +1177,7 @@ def multiple_projection_acquisition_with_crossing_beams(filename, base_save_name
 
         pp_pots = pp_beam1 + pp_beam2
 
-        pp_pots -= np.min(pp_pots)
+        #pp_pots -= np.min(pp_pots)
 
         psi_after_pp = multislice_phaseplate(psi_with_noise, pp_pots, dz_vec, r)
 
@@ -1359,14 +1360,14 @@ def effect_of_stacking(filename):
 
     pp_proj = (np.sum(pp_pots * dz_vec_stack, axis=0) - np.min(np.sum(pp_pots * dz_vec_stack, axis=0)))
 
-    pp_pots -= np.min(pp_pots)
+    #pp_pots -= np.min(pp_pots)
 
 
     psi_after_pp1 = multislice_phaseplate(psi, pp_pots, dz_vec_stack, r)
 
     pp_pots_cross = pp_beam1 + pp_beam2
 
-    pp_pots_cross -= np.min(pp_pots_cross)
+    #pp_pots_cross -= np.min(pp_pots_cross)
 
     psi_after_pp2 = multislice_phaseplate(psi, pp_pots_cross, dz_vec, r)
 
