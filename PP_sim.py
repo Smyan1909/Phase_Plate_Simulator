@@ -1371,7 +1371,7 @@ def effect_of_stacking(filename):
     psi_after_pp2 = multislice_phaseplate(psi, pp_pots_cross, dz_vec, r)
 
 
-    psi_after_pp3 = np.fft.ifftshift(np.fft.fftshift(np.fft.fft2(psi)) * pp_proj)
+    psi_after_pp3 = np.fft.ifftshift(np.fft.fftshift(np.fft.fft2(psi)) * np.exp(pp_proj*-1j))
 
 
     image_stack = np.abs(np.fft.ifft2(psi_after_pp1 * mt.objective_transfer_function(k_four, mt.wavelength, 2e-3, 0)))**2
