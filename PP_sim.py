@@ -1367,7 +1367,10 @@ def effect_of_stacking(filename):
 
     dz_vec_stack = np.reshape(dz_vec_stack, (len(dz_vec_stack), 1, 1))
 
-    psi_after_pp3 = np.fft.ifftshift(np.fft.fftshift(np.fft.fft2(psi)) * np.sum(pp_pots*dz_vec_stack, axis=0))
+    pp_proj = (np.sum(pp_pots*dz_vec_stack, axis=0)-np.min(np.sum(pp_pots*dz_vec_stack, axis=0)))
+
+    psi_after_pp3 = np.fft.ifftshift(np.fft.fftshift(np.fft.fft2(psi)) * pp_proj)
+
 
     image_stack = np.abs(np.fft.ifft2(psi_after_pp1 * mt.objective_transfer_function(k_four, mt.wavelength, 2e-3, 0)))**2
     image_cross = np.abs(
