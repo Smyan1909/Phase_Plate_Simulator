@@ -1404,6 +1404,54 @@ def effect_of_stacking(filename):
     plt.xlabel("Spatial Frequency [1/Å]")
     plt.show()
 
+def plot_For_Potential():
+
+    pot_num1 = random.randint(0, 21)
+    pot_num2 = random.randint(0, 21)
+
+    pp_beam1, z_pos_1 = read_Potential_Map(f"PP_Pot_map_{pot_num1}.txt", f"z_pos_{pot_num1}.txt")
+    pp_beam2, z_pos_2 = read_Potential_Map(f"PP_Pot_map_{pot_num2}.txt", f"z_pos_{pot_num2}.txt")
+
+    pp_beam2 = np.rot90(pp_beam2, axes=(1, 2))
+
+    dz_vec = z_pos_1
+
+    dz_vec_stack = np.concatenate((z_pos_1, z_pos_2))
+
+    pp_pots = np.vstack((pp_beam1, pp_beam2))
+
+    dz_vec_stack = np.reshape(dz_vec_stack, (len(dz_vec_stack), 1, 1))
+
+    pp_proj = (np.sum(pp_pots * dz_vec_stack, axis=0) - np.min(np.sum(pp_pots * dz_vec_stack, axis=0)))
+
+    plt.figure(1)
+    plt.imshow(pp_proj, extent=(-50, 50, -50, 50))
+    plt.xlabel(r"x [$\mu m$]")
+    plt.ylabel(r"y [$\mu m$]")
+    plt.title("Projected Potential single slice")
+    plt.colorbar()
+
+    diag_pots = np.diag(pp_proj)
+    diag_pots = diag_pots[len(diag_pots)//2:]
+
+    horizontal_pots = pp_proj[128, 128:255]
+
+    coords_horizontal = np.linspace(0, 50, num=len(horizontal_pots))
+    coords_diag = np.linspace(0, 50*np.sqrt(2), num=len(diag_pots))
+
+    plt.figure(2)
+    plt.plot(coords_diag, diag_pots * 10**6)
+    plt.title("Projected Potential diagonal single slice")
+    plt.xlabel(r"Distance [$\mu m$]")
+    plt.ylabel(r"Projected Potential [$V \mu m$]")
+
+    plt.figure(3)
+    plt.plot(coords_horizontal, horizontal_pots * 10**6)
+    plt.title("Projected Potential horizontal single slice")
+    plt.xlabel(r"Distance [$\mu m$]")
+    plt.ylabel(r"Projected Potential [$V \mu m$]")
+
+    plt.show()
 def plot_molecule(input_mrc_file):
     """
     Plots 2D projection of the specified .mrc file
@@ -1421,4 +1469,5 @@ if __name__ == "__main__":
     #generate_all_projections(num_rotations=90, noise_level=0.03, D=[-10e-9, -5e-9, 0, 5e-9, 10e-9])
     #multiple_projection_acquisition("6drv_rotated_270.mrc", "6drv_rotated_270_projection", D=[-10e-9, -5e-9, 0, 5e-9, 10e-9], noise_level=0.03)
     #view_CTF("CTF_files_-10", 53e-9, "-10")
-    effect_of_stacking("6drv.mrc")
+    #effect_of_stacking("6drv.mrc")
+    plot_For_Potential()
