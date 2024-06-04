@@ -1372,14 +1372,14 @@ def effect_of_stacking(filename):
     psi_after_pp2 = multislice_phaseplate(psi, pp_pots_cross, dz_vec, r)
 
 
-    psi_after_pp3 = np.fft.ifftshift(np.fft.fftshift(np.fft.fft2(psi)) * np.exp(pp_proj*-1j))
+    psi_after_pp3 = np.fft.ifftshift(np.fft.fftshift(np.fft.fft2(psi)) * np.exp(-1j*pp_proj*mt.sigma_e))
 
 
-    image_stack = np.abs(np.fft.ifft2(psi_after_pp1 * mt.objective_transfer_function(k_four, mt.wavelength, 2e-3, 0)))**2
+    image_stack = np.abs(np.fft.ifft2(psi_after_pp1 * mt.objective_transfer_function(k_four, mt.wavelength, 2e-3, -40e-9)))**2
     image_cross = np.abs(
-        np.fft.ifft2(psi_after_pp2 * mt.objective_transfer_function(k_four, mt.wavelength, 2e-3, 0))) ** 2
+        np.fft.ifft2(psi_after_pp2 * mt.objective_transfer_function(k_four, mt.wavelength, 2e-3, -40e-9))) ** 2
 
-    image_single = np.abs(np.fft.ifft2(psi_after_pp3 * mt.objective_transfer_function(k_four, mt.wavelength, 2e-3, 0)))**2
+    image_single = np.abs(np.fft.ifft2(psi_after_pp3 * mt.objective_transfer_function(k_four, mt.wavelength, 2e-3, -40e-9)))**2
 
     reference = mt.ideal_image()
 
@@ -1405,6 +1405,11 @@ def effect_of_stacking(filename):
     plt.show()
 
 def plot_For_Potential():
+    x, y = mt.generate_grid(mt.pots)
+
+    kx, ky = np.meshgrid(np.fft.fftfreq(len(x), d=(voxelsize * angstrom)),
+                         np.fft.fftfreq(len(y), d=(voxelsize * angstrom)))
+    k_four = np.sqrt(kx ** 2 + ky ** 2)
 
     pot_num1 = random.randint(0, 21)
     pot_num2 = random.randint(0, 21)
@@ -1451,6 +1456,20 @@ def plot_For_Potential():
     plt.xlabel(r"Distance [$\mu m$]")
     plt.ylabel(r"Projected Potential [$V \mu m$]")
 
+
+    ctf = np.sin(np.fft.fftshift(mt.lens_abber_func(k_four, mt.wavelength, 2e-3, -40e-9)) - (mt.sigma_e*pp_proj))
+
+    ctf_diag = np.diag(ctf)
+
+    plt.figure(4)
+    plt.plot(coords_diag/100, ctf_diag[len(ctf_diag)//2:])
+    plt.xlabel("spatial frequency [1/Å]")
+    plt.title("Weak Phase CTF for D=40nm overfocus")
+
+
+    plt.figure(5)
+    plt.imshow(ctf, cmap="gray")
+
     plt.show()
 def plot_molecule(input_mrc_file):
     """
@@ -1466,8 +1485,8 @@ def plot_molecule(input_mrc_file):
 
 #Write code to run here for encapsulation
 if __name__ == "__main__":
-    #generate_all_projections(num_rotations=90, noise_level=0.03, D=[-10e-9, -5e-9, 0, 5e-9, 10e-9])
-    #multiple_projection_acquisition("6drv_rotated_270.mrc", "6drv_rotated_270_projection", D=[-10e-9, -5e-9, 0, 5e-9, 10e-9], noise_level=0.03)
+    #generate_all_projections(num_rotations=91, noise_level=0.03, D=[-80e-9, -70e-9, -60e-9, -50e-9, -40e-9])
+    #multiple_projection_acquisition("6drv_rotated_270.mrc", "6drv_rotated_270_projection", D=[-80e-9, -70e-9, -60e-9, -50e-9, -40e-9], noise_level=0.03)
     #view_CTF("CTF_files_-10", 53e-9, "-10")
-    #effect_of_stacking("6drv.mrc")
-    plot_For_Potential()
+    effect_of_stacking("6drv.mrc")
+    #plot_For_Potential()
